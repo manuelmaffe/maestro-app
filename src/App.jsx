@@ -656,6 +656,11 @@ const CSS = () => (
       padding:8px 12px;background:var(--dbg);border-radius:var(--rs);
       font-weight:500;
     }
+    .auth-info{
+      font-size:12px;color:#16a34a;margin-bottom:12px;
+      padding:8px 12px;background:#f0fdf4;border-radius:var(--rs);
+      font-weight:500;
+    }
 
     .auth-submit{
       width:100%;padding:14px;border-radius:var(--r);border:none;
@@ -1124,28 +1129,51 @@ function BookingBuilder({ events, accounts, enabledCals, user, onFlash, onClose 
   );
 }
 
+const AUTH_ERRORS = {
+  "Invalid login credentials": "Email o contraseña incorrectos.",
+  "User already registered": "El email ya está registrado. Iniciá sesión.",
+  "Email not confirmed": "Confirmá tu email antes de ingresar.",
+  "Password should be at least 6 characters": "La contraseña debe tener al menos 6 caracteres.",
+};
+function authMsg(msg){ return AUTH_ERRORS[msg] || msg; }
+
 // ── Auth Screen ──
-function AuthScreen({ onLogin }) {
+function AuthScreen() {
   const [mode, setMode] = useState("login"); // login | register | forgot
   const [email, setEmail] = useState("");
   const [pass, setPass] = useState("");
   const [name, setName] = useState("");
   const [error, setError] = useState("");
+  const [info, setInfo] = useState("");
   const [loading, setLoading] = useState(false);
 
-  const submit = () => {
-    setError("");
+  const submit = async () => {
+    setError(""); setInfo("");
     if (mode === "forgot") {
       if (!email.trim() || !email.includes("@")) { setError("Ingresá un email válido"); return; }
       setLoading(true);
-      setTimeout(() => { setLoading(false); setMode("login"); }, 1200);
+      const { error: e } = await supabase.auth.resetPasswordForEmail(email, { redirectTo: window.location.origin });
+      setLoading(false);
+      if (e) { setError(authMsg(e.message)); return; }
+      setInfo("Revisá tu email para recuperar la contraseña.");
+      setMode("login");
       return;
     }
     if (!email.trim() || !email.includes("@")) { setError("Ingresá un email válido"); return; }
     if (pass.length < 6) { setError("La contraseña debe tener al menos 6 caracteres"); return; }
     if (mode === "register" && !name.trim()) { setError("Ingresá tu nombre"); return; }
     setLoading(true);
-    setTimeout(() => { setLoading(false); onLogin({ email, name: name || email.split("@")[0] }); }, 1000);
+    if (mode === "register") {
+      const { error: e } = await supabase.auth.signUp({ email, password: pass, options: { data: { full_name: name } } });
+      setLoading(false);
+      if (e) { setError(authMsg(e.message)); return; }
+      setInfo("¡Cuenta creada! Revisá tu email para confirmarla y luego iniciá sesión.");
+      setMode("login"); setPass("");
+    } else {
+      const { error: e } = await supabase.auth.signInWithPassword({ email, password: pass });
+      setLoading(false);
+      if (e) { setError(authMsg(e.message)); }
+    }
   };
 
   const googleLogin = async () => {
@@ -1224,6 +1252,7 @@ function AuthScreen({ onLogin }) {
           )}
 
           {error && <div className="auth-error">{error}</div>}
+          {info && <div className="auth-info">{info}</div>}
 
           <button className="auth-submit" onClick={submit} disabled={loading}>
             {loading ? (
@@ -1270,7 +1299,7 @@ export default function Maestro(){
   useEffect(() => {
     // Restaurar sesión al cargar
     supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session?.provider_token) {
+      if (session?.user) {
         setUser(sessionToUser(session));
         setAuthed(true);
       }
@@ -1278,7 +1307,7 @@ export default function Maestro(){
     });
     // Escuchar cambios de sesión (login, logout, token refresh)
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      if (session?.provider_token) {
+      if (session?.user) {
         setUser(sessionToUser(session));
         setAuthed(true);
       } else {
@@ -1310,7 +1339,7 @@ export default function Maestro(){
     return (
       <>
         <CSS />
-        <AuthScreen onLogin={() => {}} />
+        <AuthScreen />
       </>
     );
   }
