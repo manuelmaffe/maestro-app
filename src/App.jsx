@@ -2099,9 +2099,18 @@ function MaestroApp({ user, onLogout }){
                         style={{position:"absolute",top:topPx,height:h2,
                           left:`calc(${leftPct*100}% + 2px)`,
                           width:`calc(${widthPct*100}% - 6px)`,
-                          borderLeftColor:evtColor,background:`${evtColor}18`,zIndex:2}}
+                          borderLeftColor:evtColor,background:`${evtColor}18`,zIndex:2,
+                          opacity:evt.done?0.5:1}}
                         onClick={()=>setExpandedEvt(evt)}>
-                        <div className="tl-evt-title">{evt.title}</div>
+                        <div style={{display:"flex",alignItems:"center",gap:4}}>
+                          {evt.isTask&&(
+                            <span style={{flexShrink:0,cursor:"pointer",display:"flex",color:evt.done?"var(--ok)":"var(--t4)"}}
+                              onClick={e=>{e.stopPropagation();toggleDone(evt.id)}}>
+                              {evt.done?I.taskDone:I.taskOpen}
+                            </span>
+                          )}
+                          <div className="tl-evt-title" style={{textDecoration:evt.done?"line-through":"none"}}>{evt.title}</div>
+                        </div>
                         {h2>28&&<div className="tl-evt-sub"><span>{fmt(evt.sh,evt.sm)}–{fmt(evt.eh,evt.em)}</span></div>}
                       </div>
                     );
@@ -2508,7 +2517,7 @@ function MaestroApp({ user, onLogout }){
                 <div>
                   <div className="cal-si" style={{paddingLeft:0}}>
                     <img src="https://developers.google.com/identity/images/g-logo.png" style={{width:8,height:8,flexShrink:0}}/>
-                    <span className="cal-n">Google Meet</span>
+                    <span className="cal-n" style={{fontSize:13,color:"var(--t)"}}>Google Meet</span>
                     <Toggle checked={!!(form.addMeet||form.videoLink)} disabled={!!form.videoLink}
                       onChange={e=>setForm(f=>({...f,addMeet:e.target.checked}))}/>
                   </div>
