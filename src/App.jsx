@@ -700,6 +700,9 @@ const CSS = () => (
     .att-chip-email{flex:1;color:var(--t2)}
     .att-chip-remove{background:none;border:none;cursor:pointer;color:var(--t4);padding:0;line-height:1;font-size:14px}
     .att-chip-remove:hover{color:var(--danger)}
+    .drag-time-tip{position:absolute;top:-22px;left:4px;background:var(--t);color:var(--w);font-size:10px;font-weight:700;font-family:var(--fm);padding:2px 6px;border-radius:4px;white-space:nowrap;pointer-events:none;z-index:20}
+    .tl-evt-resize{position:absolute;bottom:0;left:0;right:0;height:6px;cursor:ns-resize;border-radius:0 0 4px 4px}
+    .tl-evt-resize:hover{background:rgba(0,0,0,.08)}
     .evt-sh-attendees{margin:12px 0;border-top:1px solid var(--bl);padding-top:12px}
     .evt-sh-att-label{display:flex;align-items:center;gap:6px;font-size:11px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px}
     .evt-sh-att-row{display:flex;align-items:center;gap:10px;margin-bottom:8px}
@@ -1691,9 +1694,29 @@ function MaestroApp({ user, onLogout }){
   const PX_H = 56; // px per hour
 
   // ── Drag to move/resize events ──
-  const dragEvt = useRef(null); // {id, mode:'move'|'resize', startY, origSh, origSm, origEh, origEm, scrollTop}
-  const [dragPreview, setDragPreview] = useState(null); // {id, sh, sm, eh, em}
+  const dragEvt = useRef(null);
+  const [dragPreview, setDragPreview] = useState(null); // {id, sh, sm, eh, em, date?}
   const dragMoved = useRef(false);
+
+  // Stable refs so drag closures always see fresh values
+  const eventsRef   = useRef(events);
+  const viewDaysRef = useRef(viewDays);
+  useEffect(() => { eventsRef.current = events; },   [events]);
+  useEffect(() => { viewDaysRef.current = viewDays; }, [viewDays]);
+  const syncDraggedRef = useRef(null);
+  // Assigned each render so the closure is always fresh
+  syncDraggedRef.current = async (origEvt, p) => {
+    const newDate = p.date instanceof Date ? p.date : origEvt.date;
+    const updated = { ...origEvt, sh: p.sh, sm: p.sm, eh: p.eh, em: p.em, date: newDate };
+    try {
+      if (origEvt.isTask) {
+        await supabase.from("tasks").update({ sh: p.sh, sm: p.sm, eh: p.eh, em: p.em }).eq("id", origEvt.id);
+      } else {
+        const token = getTokenForCal(origEvt.cid);
+        if (token) await updateEvent(token, origEvt.cid, origEvt.googleId || origEvt.id, updated);
+      }
+    } catch(e) { flash("Error al sincronizar: " + (e.message || "")); }
+  };
 
   const snapTo15 = (totalMin) => {
     const snapped = Math.round(totalMin / 15) * 15;
@@ -1711,7 +1734,25 @@ function MaestroApp({ user, onLogout }){
       dur: (evt.eh * 60 + evt.em) - (evt.sh * 60 + evt.sm),
     };
     dragMoved.current = false;
-    setDragPreview({ id: evt.id, sh: evt.sh, sm: evt.sm, eh: evt.eh, em: evt.em });
+    setDragPreview({ id: evt.id, sh: evt.sh, sm: evt.sm, eh: evt.eh, em: evt.em, date: evt.date });
+  }, []);
+
+  // Multi-day drag: also tracks horizontal position for cross-day movement
+  const startDragMulti = useCallback((e, evt, mode) => {
+    e.stopPropagation();
+    e.preventDefault();
+    const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+    const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+    dragEvt.current = {
+      id: evt.id, mode, startY: clientY, startX: clientX,
+      scrollTop: dtlRef.current?.scrollTop || 0,
+      origSh: evt.sh, origSm: evt.sm, origEh: evt.eh, origEm: evt.em,
+      origDate: evt.date,
+      dur: (evt.eh*60+evt.em) - (evt.sh*60+evt.sm),
+      isMulti: true,
+    };
+    dragMoved.current = false;
+    setDragPreview({ id: evt.id, sh: evt.sh, sm: evt.sm, eh: evt.eh, em: evt.em, date: evt.date });
   }, []);
 
   useEffect(() => {
@@ -1721,44 +1762,64 @@ function MaestroApp({ user, onLogout }){
       if (!dragEvt.current) return;
       e.preventDefault();
       const clientY = e.touches ? e.touches[0].clientY : e.clientY;
-      const scrollNow = tlRef.current ? tlRef.current.scrollTop : 0;
-      const scrollDelta = scrollNow - dragEvt.current.scrollTop;
-      const dy = (clientY - dragEvt.current.startY) + scrollDelta;
-      
-      if (Math.abs(dy) > 4) dragMoved.current = true;
-      
-      const dMin = (dy / PX_H) * 60;
       const d = dragEvt.current;
+      // Use dtlRef scroll for multi-day drag, tlRef for single-day
+      const scrollRef = d.isMulti ? dtlRef : tlRef;
+      const scrollNow = scrollRef.current ? scrollRef.current.scrollTop : 0;
+      const scrollDelta = scrollNow - d.scrollTop;
+      const dy = (clientY - d.startY) + scrollDelta;
+
+      if (Math.abs(dy) > 4) dragMoved.current = true;
+
+      const dMin = (dy / PX_H) * 60;
 
       if (d.mode === "move") {
         const origStart = d.origSh * 60 + d.origSm;
         const newStart = snapTo15(origStart + dMin);
         const newEnd = newStart + d.dur;
         if (newEnd <= 24 * 60) {
-          setDragPreview({
+          setDragPreview(prev => ({
+            ...(prev || {}),
             id: d.id,
             sh: Math.floor(newStart / 60), sm: newStart % 60,
             eh: Math.floor(newEnd / 60), em: newEnd % 60,
-          });
+          }));
         }
       } else {
         const origEnd = d.origEh * 60 + d.origEm;
         const newEnd = snapTo15(origEnd + dMin);
         const origStart = d.origSh * 60 + d.origSm;
         if (newEnd > origStart + 15) {
-          setDragPreview({
+          setDragPreview(prev => ({
+            ...(prev || {}),
             id: d.id, sh: d.origSh, sm: d.origSm,
             eh: Math.floor(newEnd / 60), em: newEnd % 60,
-          });
+          }));
         }
+      }
+
+      // Cross-day detection (multi-day desktop view only)
+      if (d.isMulti && d.mode === "move" && viewDaysRef.current?.length > 0 && dtlRef.current) {
+        const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+        const rect = dtlRef.current.getBoundingClientRect();
+        const x = clientX - rect.left - 54; // subtract 54px time gutter
+        const colW = (rect.width - 54) / viewDaysRef.current.length;
+        const idx = Math.max(0, Math.min(viewDaysRef.current.length - 1, Math.floor(x / colW)));
+        const newDate = viewDaysRef.current[idx];
+        setDragPreview(prev => prev ? { ...prev, date: newDate } : prev);
       }
     };
 
     const onEnd = () => {
       if (dragEvt.current && dragPreview && dragMoved.current) {
         const p = dragPreview;
-        setEvents(es => es.map(e => e.id === p.id ? { ...e, sh: p.sh, sm: p.sm, eh: p.eh, em: p.em } : e));
-        flash("Movido");
+        const origEvt = eventsRef.current.find(e => e.id === p.id);
+        const newDate = p.date instanceof Date ? p.date : origEvt?.date;
+        setEvents(es => es.map(e => e.id === p.id
+          ? { ...e, sh: p.sh, sm: p.sm, eh: p.eh, em: p.em, ...(newDate && { date: newDate }) }
+          : e));
+        flash("Reprogramado");
+        if (origEvt) syncDraggedRef.current?.({ ...origEvt }, { ...p, date: newDate || origEvt.date });
       }
       dragEvt.current = null;
       setDragPreview(null);
@@ -2154,8 +2215,14 @@ function MaestroApp({ user, onLogout }){
                   {layoutEvents(dayEvtsForCol).map(evt => {
                     const cal=getCal(evt.cid);
                     const evtColor=evt.isTask?"#6366F1":(cal?.color||"#ccc");
-                    const topPx=((evt.sh-TL_FIRST_HOUR)*60+evt.sm)/60*PX_H;
-                    const h2=Math.max(20,((evt.eh*60+evt.em)-(evt.sh*60+evt.sm))/60*PX_H);
+                    const isDraggingThis=dragPreview?.id===evt.id;
+                    const crossDay=isDraggingThis&&dragPreview.date&&!same(dragPreview.date,d);
+                    const eSh=(isDraggingThis&&!crossDay)?dragPreview.sh:evt.sh;
+                    const eSm=(isDraggingThis&&!crossDay)?dragPreview.sm:evt.sm;
+                    const eEh=(isDraggingThis&&!crossDay)?dragPreview.eh:evt.eh;
+                    const eEm=(isDraggingThis&&!crossDay)?dragPreview.em:evt.em;
+                    const topPx=((eSh-TL_FIRST_HOUR)*60+eSm)/60*PX_H;
+                    const h2=Math.max(20,((eEh*60+eEm)-(eSh*60+eSm))/60*PX_H);
                     const leftPct=evt._col/evt._cols;
                     const widthPct=1/evt._cols;
                     return (
@@ -2163,9 +2230,23 @@ function MaestroApp({ user, onLogout }){
                         style={{position:"absolute",top:topPx,height:h2,
                           left:`calc(${leftPct*100}% + 2px)`,
                           width:`calc(${widthPct*100}% - 6px)`,
-                          borderLeftColor:evtColor,background:`${evtColor}18`,zIndex:2,
-                          opacity:evt.done?0.5:1}}
-                        onClick={()=>setExpandedEvt(evt)}>
+                          borderLeft:`3px solid ${evtColor}`,
+                          background:crossDay?"transparent":`${evtColor}18`,
+                          opacity:crossDay?0.25:(evt.done?0.5:1),
+                          outline:crossDay?`1.5px dashed ${evtColor}`:"none",
+                          zIndex:(isDraggingThis&&!crossDay)?10:2,
+                          cursor:(isDraggingThis&&!crossDay)?"grabbing":"grab",
+                          boxShadow:(isDraggingThis&&!crossDay)?"0 4px 20px rgba(0,0,0,.15)":"none",
+                          transition:(isDraggingThis&&!crossDay)?"none":"top .12s,height .12s",
+                          userSelect:"none",
+                        }}
+                        onClick={()=>{if(!dragMoved.current)setExpandedEvt(evt)}}
+                        onMouseDown={e=>startDragMulti(e,evt,"move")}
+                        onTouchStart={e=>startDragMulti(e,evt,"move")}
+                      >
+                        {isDraggingThis&&!crossDay&&(
+                          <div className="drag-time-tip">{fmt(eSh,eSm)} – {fmt(eEh,eEm)}</div>
+                        )}
                         <div style={{display:"flex",alignItems:"center",gap:4}}>
                           {evt.isTask&&(
                             <span style={{flexShrink:0,cursor:"pointer",display:"flex",color:evt.done?"var(--ok)":"var(--t4)"}}
@@ -2175,10 +2256,34 @@ function MaestroApp({ user, onLogout }){
                           )}
                           <div className="tl-evt-title" style={{textDecoration:evt.done?"line-through":"none"}}>{evt.title}</div>
                         </div>
-                        {h2>28&&<div className="tl-evt-sub"><span>{fmt(evt.sh,evt.sm)}–{fmt(evt.eh,evt.em)}</span></div>}
+                        {h2>28&&<div className="tl-evt-sub"><span>{fmt(eSh,eSm)}–{fmt(eEh,eEm)}</span></div>}
+                        {!evt.allDay&&h2>=28&&(
+                          <div className="tl-evt-resize"
+                            onMouseDown={e=>{e.stopPropagation();startDragMulti(e,evt,"resize")}}
+                            onTouchStart={e=>{e.stopPropagation();startDragMulti(e,evt,"resize")}}/>
+                        )}
                       </div>
                     );
                   })}
+
+                  {/* Cross-day preview: event dragged INTO this column from another day */}
+                  {(()=>{
+                    if(!dragPreview?.date||!same(dragPreview.date,d))return null;
+                    const srcEvt=eventsRef.current.find(e=>e.id===dragPreview.id);
+                    if(!srcEvt||same(srcEvt.date,d))return null;
+                    const srcCal=getCal(srcEvt.cid);
+                    const pc=srcEvt.isTask?"#6366F1":(srcCal?.color||"#ccc");
+                    const pTop=((dragPreview.sh-TL_FIRST_HOUR)*60+dragPreview.sm)/60*PX_H;
+                    const pH=Math.max(20,((dragPreview.eh*60+dragPreview.em)-(dragPreview.sh*60+dragPreview.sm))/60*PX_H);
+                    return(
+                      <div style={{position:"absolute",top:pTop,height:pH,left:2,right:4,zIndex:10,
+                        borderLeft:`3px solid ${pc}`,background:`${pc}30`,borderRadius:4,
+                        pointerEvents:"none",boxShadow:"0 4px 20px rgba(0,0,0,.15)"}}>
+                        <div className="drag-time-tip">{fmt(dragPreview.sh,dragPreview.sm)} – {fmt(dragPreview.eh,dragPreview.em)}</div>
+                        <div className="tl-evt-title">{srcEvt.title}</div>
+                      </div>
+                    );
+                  })()}
                 </div>
               );
             })}
