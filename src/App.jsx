@@ -81,6 +81,7 @@ const I = {
   copy:<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>,
   globe:<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10A15.3 15.3 0 0 1 12 2z"/></svg>,
   sync:<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>,
+  users:<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>,
 };
 
 const CSS = () => (
@@ -692,6 +693,20 @@ const CSS = () => (
       padding:8px 12px;background:#f0fdf4;border-radius:var(--rs);
       font-weight:500;
     }
+    .att-input-row{display:flex;gap:6px;margin-bottom:8px}
+    .att-add-btn{padding:0 12px;height:36px;border-radius:var(--rs);border:1px solid var(--brd);background:var(--bg);cursor:pointer;font-size:12px;font-weight:600;color:var(--t2);white-space:nowrap;font-family:var(--fm)}
+    .att-add-btn:hover{border-color:var(--t3)}
+    .att-chip{display:flex;align-items:center;gap:6px;padding:4px 10px;background:var(--bg);border:1px solid var(--brd);border-radius:20px;font-size:12px;margin-bottom:4px}
+    .att-chip-email{flex:1;color:var(--t2)}
+    .att-chip-remove{background:none;border:none;cursor:pointer;color:var(--t4);padding:0;line-height:1;font-size:14px}
+    .att-chip-remove:hover{color:var(--danger)}
+    .evt-sh-attendees{margin:12px 0;border-top:1px solid var(--bl);padding-top:12px}
+    .evt-sh-att-label{display:flex;align-items:center;gap:6px;font-size:11px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px}
+    .evt-sh-att-row{display:flex;align-items:center;gap:10px;margin-bottom:8px}
+    .evt-sh-att-av{width:28px;height:28px;border-radius:50%;background:var(--hover);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:var(--t2);flex-shrink:0}
+    .evt-sh-att-info{flex:1;min-width:0}
+    .evt-sh-att-name{font-size:12px;font-weight:600;color:var(--t);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .evt-sh-att-email{font-size:11px;color:var(--t3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 
     .auth-submit{
       width:100%;padding:14px;border-radius:var(--r);border:none;
@@ -843,6 +858,25 @@ function EventDetail({evt,cal,onClose,onEdit,onDelete,onToggleDone}){
             <div className="evt-sh-row">{I.task}<span>Prioridad: {evt.priority==="high"?"Alta":evt.priority==="medium"?"Media":"Baja"}</span></div>
           )}
           {evt.desc&&<div className="evt-sh-desc">{evt.desc}</div>}
+          {evt.attendees?.length>0&&(
+            <div className="evt-sh-attendees">
+              <div className="evt-sh-att-label">{I.users} Invitados ({evt.attendees.length})</div>
+              {evt.attendees.map((a,i)=>{
+                const statusIcon=a.status==="accepted"?"✓":a.status==="declined"?"✗":a.status==="tentative"?"~":"?";
+                const statusColor=a.status==="accepted"?"var(--ok)":a.status==="declined"?"var(--danger)":a.status==="tentative"?"#f59e0b":"var(--t4)";
+                return(
+                  <div key={i} className="evt-sh-att-row">
+                    <span className="evt-sh-att-av">{(a.name||a.email)[0].toUpperCase()}</span>
+                    <div className="evt-sh-att-info">
+                      {a.name&&<div className="evt-sh-att-name">{a.name}</div>}
+                      <div className="evt-sh-att-email">{a.email}</div>
+                    </div>
+                    <span style={{fontSize:11,fontWeight:700,color:statusColor,flexShrink:0}}>{statusIcon}</span>
+                  </div>
+                );
+              })}
+            </div>
+          )}
           <div className="evt-sh-acts">
             <button className="btn-g" onClick={onEdit}>{I.edit} Editar</button>
             <button className="btn-g dng" onClick={onDelete}>{I.trash} Eliminar</button>
@@ -1378,6 +1412,36 @@ export default function Maestro(){
   return <MaestroApp user={user} onLogout={handleLogout} />;
 }
 
+function AttendeeField({ attendees, onChange }) {
+  const [input, setInput] = useState("");
+  const add = () => {
+    const email = input.trim().toLowerCase();
+    if (!email || !email.includes("@")) return;
+    if (attendees.some(a => a.email === email)) { setInput(""); return; }
+    onChange([...attendees, { email }]);
+    setInput("");
+  };
+  return (
+    <div className="fg">
+      <label className="fl">Invitados</label>
+      <div className="att-input-row">
+        <input className="fi" placeholder="email@ejemplo.com" value={input}
+          onChange={e=>setInput(e.target.value)}
+          onKeyDown={e=>{if(e.key==="Enter"){e.preventDefault();add();}}}
+          style={{flex:1}}
+        />
+        <button type="button" className="att-add-btn" onClick={add}>Agregar</button>
+      </div>
+      {attendees.map((a,i)=>(
+        <div key={i} className="att-chip">
+          <span className="att-chip-email">{a.email}</span>
+          <button className="att-chip-remove" onClick={()=>onChange(attendees.filter((_,j)=>j!==i))}>×</button>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 function layoutEvents(evts){
   if(!evts.length) return [];
   const res=evts.map(e=>({...e,_col:0,_cols:1}));
@@ -1812,22 +1876,22 @@ function MaestroApp({ user, onLogout }){
 
   const fmtDateInput = d => `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
 
-  const openNew=()=>{setFormError("");setForm({title:"",desc:"",cid:enabledCals[0]||"",date:fmtDateInput(selDate),sh:9,sm:0,eh:10,em:0,allDay:false,loc:"",videoLink:"",addMeet:false,isTask:false,isBooking:false,done:false,priority:null});setTlOpen(false);setTlPhase("idle");setExpandedEvt(null);setSheet("new")};
+  const openNew=()=>{setFormError("");setForm({title:"",desc:"",cid:enabledCals[0]||"",date:fmtDateInput(selDate),sh:9,sm:0,eh:10,em:0,allDay:false,loc:"",videoLink:"",addMeet:false,attendees:[],isTask:false,isBooking:false,done:false,priority:null});setTlOpen(false);setTlPhase("idle");setExpandedEvt(null);setSheet("new")};
   const openNewAt=(hour,min,date)=>{
     const startM=Math.round((hour*60+min)/30)*30; // redondear total a intervalos de 30 min (= opciones del select)
     const sh2=Math.floor(startM/60), sm2=startM%60;
     const endM=Math.min(23*60+30, startM+60);
     const eh2=Math.floor(endM/60), em2=endM%60;
     setFormError("");
-    setForm({title:"",desc:"",cid:enabledCals[0]||"",date:fmtDateInput(date||selDate),sh:sh2,sm:sm2,eh:eh2,em:em2,allDay:false,loc:"",videoLink:"",addMeet:false,isTask:false,isBooking:false,done:false,priority:null});
+    setForm({title:"",desc:"",cid:enabledCals[0]||"",date:fmtDateInput(date||selDate),sh:sh2,sm:sm2,eh:eh2,em:em2,allDay:false,loc:"",videoLink:"",addMeet:false,attendees:[],isTask:false,isBooking:false,done:false,priority:null});
     setTlOpen(false);setTlPhase("idle");setExpandedEvt(null);setSheet("new");
   };
-  const openEdit=evt=>{setForm({id:evt.id,title:evt.title,desc:evt.desc||"",cid:evt.cid,date:fmtDateInput(evt.date),sh:evt.sh,sm:evt.sm,eh:evt.eh,em:evt.em,allDay:evt.allDay||false,loc:evt.loc||"",videoLink:evt.videoLink||"",addMeet:!!(evt.videoLink),isTask:evt.isTask||false,done:evt.done||false,priority:evt.priority||null});setExpandedEvt(null);setTlOpen(false);setTlPhase("idle");setSheet("edit")};
+  const openEdit=evt=>{setForm({id:evt.id,title:evt.title,desc:evt.desc||"",cid:evt.cid,date:fmtDateInput(evt.date),sh:evt.sh,sm:evt.sm,eh:evt.eh,em:evt.em,allDay:evt.allDay||false,loc:evt.loc||"",videoLink:evt.videoLink||"",addMeet:!!(evt.videoLink),attendees:evt.attendees||[],isTask:evt.isTask||false,done:evt.done||false,priority:evt.priority||null});setExpandedEvt(null);setTlOpen(false);setTlPhase("idle");setSheet("edit")};
   const save=async()=>{
     if(!form.title.trim()){setFormError("El título es obligatorio");return;}
     setFormError("");
     const [yr,mn,dy] = form.date.split("-").map(Number);
-    const d={title:form.title,desc:form.desc,cid:form.isTask?"maestro-tasks":form.cid,date:new Date(yr,mn-1,dy),sh:+form.sh,sm:+form.sm,eh:+form.eh,em:+form.em,allDay:form.isTask?false:form.allDay,loc:form.isTask?"":form.loc,videoLink:form.isTask?"":form.videoLink,addMeet:!form.isTask&&form.addMeet&&!form.videoLink,isTask:form.isTask,done:form.done,priority:form.isTask?(form.priority||null):null};
+    const d={title:form.title,desc:form.desc,cid:form.isTask?"maestro-tasks":form.cid,date:new Date(yr,mn-1,dy),sh:+form.sh,sm:+form.sm,eh:+form.eh,em:+form.em,allDay:form.isTask?false:form.allDay,loc:form.isTask?"":form.loc,videoLink:form.isTask?"":form.videoLink,addMeet:!form.isTask&&form.addMeet&&!form.videoLink,attendees:form.isTask?[]:(form.attendees||[]),isTask:form.isTask,done:form.done,priority:form.isTask?(form.priority||null):null};
     if(d.isTask){
       const row={user_id:user.id,title:d.title,description:d.desc,date:fmtDateInput(d.date),sh:d.sh,sm:d.sm,eh:d.eh,em:d.em,done:d.done,priority:d.priority};
       if(form.id){
@@ -2513,6 +2577,14 @@ function MaestroApp({ user, onLogout }){
                   <input className="fi" placeholder="Oficina, café, dirección..."
                     value={form.loc} onChange={e=>setForm(f=>({...f,loc:e.target.value}))} />
                 </div>
+              )}
+
+              {/* Invitados — events only */}
+              {!form.isTask && (
+                <AttendeeField
+                  attendees={form.attendees||[]}
+                  onChange={attendees=>setForm(f=>({...f,attendees}))}
+                />
               )}
 
               {/* Google Meet — events only */}

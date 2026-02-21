@@ -109,6 +109,10 @@ export function mapGoogleEvent(gEvent, calendarId) {
   const meetEntry = gEvent.conferenceData?.entryPoints?.find(e => e.entryPointType === "video");
   const videoLink = meetEntry?.uri || gEvent.hangoutLink || "";
 
+  const attendees = (gEvent.attendees || [])
+    .filter(a => !a.self)
+    .map(a => ({ email: a.email, name: a.displayName || "", status: a.responseStatus || "needsAction" }));
+
   return {
     id: gEvent.id,
     googleId: gEvent.id,
@@ -120,6 +124,7 @@ export function mapGoogleEvent(gEvent, calendarId) {
     desc: gEvent.description || "",
     loc: gEvent.location || "",
     videoLink,
+    attendees,
   };
 }
 
@@ -130,6 +135,10 @@ function appEventToGoogle(appEvent) {
       conferenceSolutionKey: { type: "hangoutsMeet" },
     },
   } : undefined;
+
+  const attendees = (appEvent.attendees || [])
+    .filter(a => a.email?.trim())
+    .map(a => ({ email: a.email.trim() }));
 
   if (appEvent.allDay) {
     const pad = n => String(n).padStart(2, "0");
@@ -142,6 +151,7 @@ function appEventToGoogle(appEvent) {
       start: { date: dateStr },
       end: { date: dateStr },
       ...(conferenceData && { conferenceData }),
+      ...(attendees.length && { attendees }),
     };
   }
   const startDt = new Date(appEvent.date);
@@ -155,5 +165,6 @@ function appEventToGoogle(appEvent) {
     start: { dateTime: startDt.toISOString(), timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone },
     end: { dateTime: endDt.toISOString(), timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone },
     ...(conferenceData && { conferenceData }),
+    ...(attendees.length && { attendees }),
   };
 }
