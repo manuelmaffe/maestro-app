@@ -1449,12 +1449,13 @@ function MaestroApp({ user, onLogout }){
     catch{}
   },[accounts]);
 
-  // Persistir preferencias on/off de cuentas y calendarios
+  // Persistir preferencias on/off de cuentas y calendarios (merge para no perder la cuenta primaria al recargar)
   useEffect(()=>{
     try{
-      const prefs={};
-      for(const acc of accounts){ prefs[acc.id]=acc.on; for(const c of acc.cals) prefs[c.id]=c.on; }
-      localStorage.setItem("maestro_cal_prefs",JSON.stringify(prefs));
+      const existing=JSON.parse(localStorage.getItem("maestro_cal_prefs")||"{}");
+      const updated={...existing};
+      for(const acc of accounts){ updated[acc.id]=acc.on; for(const c of acc.cals) updated[c.id]=c.on; }
+      localStorage.setItem("maestro_cal_prefs",JSON.stringify(updated));
     }catch{}
   },[accounts]);
 
