@@ -2505,15 +2505,22 @@ function MaestroApp({ user, onLogout }){
 
               {/* Google Meet — events only */}
               {!form.isTask && (
-                <div className="fr" style={{alignItems:"center",padding:"4px 0"}}>
-                  <div style={{flex:1}}>
-                    <div className="fl" style={{marginBottom:0}}>{I.video} Google Meet</div>
-                    {form.videoLink
-                      ? <a href={form.videoLink} target="_blank" rel="noopener noreferrer" style={{fontSize:11,color:"var(--blue)",textDecoration:"none"}}>{form.videoLink}</a>
-                      : <div style={{fontSize:11,color:"var(--t4)"}}>Se generará al guardar</div>}
+                <div>
+                  <div className="cal-si" style={{paddingLeft:0}}>
+                    <img src="https://developers.google.com/identity/images/g-logo.png" style={{width:8,height:8,flexShrink:0}}/>
+                    <span className="cal-n">Google Meet</span>
+                    <Toggle checked={!!(form.addMeet||form.videoLink)} disabled={!!form.videoLink}
+                      onChange={e=>setForm(f=>({...f,addMeet:e.target.checked}))}/>
                   </div>
-                  <Toggle checked={!!(form.addMeet||form.videoLink)} disabled={!!form.videoLink}
-                    onChange={e=>setForm(f=>({...f,addMeet:e.target.checked}))} icons={false}/>
+                  {form.videoLink && (
+                    <a href={form.videoLink} target="_blank" rel="noopener noreferrer"
+                      style={{fontSize:11,color:"var(--blue)",textDecoration:"none",paddingLeft:16,display:"block",marginTop:-4}}>
+                      {form.videoLink}
+                    </a>
+                  )}
+                  {form.addMeet && !form.videoLink && (
+                    <div style={{fontSize:11,color:"var(--t4)",paddingLeft:16,marginTop:-4}}>Se generará al guardar</div>
+                  )}
                 </div>
               )}
 
