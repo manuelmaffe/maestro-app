@@ -16,8 +16,8 @@ const YR=today.getFullYear(), MO=today.getMonth(), DA=today.getDate();
 
 // Data
 const PROVIDERS = [
-  {id:"google",name:"Google",icon:"G",bg:"#EA4335"},
-  {id:"outlook",name:"Outlook",icon:"O",bg:"#0078D4"},
+  {id:"google",name:"Google",icon:"G",bg:"#fff",logoUrl:"https://developers.google.com/identity/images/g-logo.png"},
+  {id:"outlook",name:"Outlook",icon:"O",bg:"#fff",logoUrl:"https://upload.wikimedia.org/wikipedia/commons/c/cc/Microsoft_Outlook_Icon_%282025%E2%80%93present%29.svg"},
   {id:"apple",name:"Apple",icon:"",bg:"#333"},
 ];
 
@@ -1148,11 +1148,6 @@ function AuthScreen({ onLogin }) {
     setTimeout(() => { setLoading(false); onLogin({ email, name: name || email.split("@")[0] }); }, 1000);
   };
 
-  const providerLogin = (provider) => {
-    setLoading(true);
-    setTimeout(() => { setLoading(false); onLogin({ email: `user@${provider}.com`, name: "Manu" }); }, 800);
-  };
-
   const googleLogin = async () => {
     setLoading(true);
     try {
@@ -1182,16 +1177,18 @@ function AuthScreen({ onLogin }) {
         {/* Provider buttons */}
         <div className="auth-providers">
           <button className="auth-prov-btn" onClick={googleLogin} disabled={loading}>
-            <span className="auth-prov-icon" style={{background:"#EA4335"}}>G</span>
+            <span className="auth-prov-icon" style={{background:"#fff",border:"1px solid #e5e7eb"}}><img src="https://developers.google.com/identity/images/g-logo.png" style={{width:18,height:18}}/></span>
             <span>Continuar con Google</span>
           </button>
-          <button className="auth-prov-btn" onClick={() => providerLogin("outlook")} disabled={loading}>
-            <span className="auth-prov-icon" style={{background:"#0078D4"}}>O</span>
+          <button className="auth-prov-btn" disabled>
+            <span className="auth-prov-icon" style={{background:"#fff",border:"1px solid #e5e7eb"}}><img src="https://upload.wikimedia.org/wikipedia/commons/c/cc/Microsoft_Outlook_Icon_%282025%E2%80%93present%29.svg" style={{width:18,height:18}}/></span>
             <span>Continuar con Outlook</span>
+            <span style={{fontSize:10,color:"var(--t4)",marginLeft:"auto",fontStyle:"italic"}}>Próximamente</span>
           </button>
-          <button className="auth-prov-btn" onClick={() => providerLogin("apple")} disabled={loading}>
+          <button className="auth-prov-btn" disabled>
             <span className="auth-prov-icon" style={{background:"#333"}}></span>
             <span>Continuar con Apple</span>
+            <span style={{fontSize:10,color:"var(--t4)",marginLeft:"auto",fontStyle:"italic"}}>Próximamente</span>
           </button>
         </div>
 
@@ -2489,7 +2486,7 @@ function MaestroApp({ user, onLogout }){
           <div className="sh">
             <div className="sh-grab"/><div className="sh-head"><span className="sh-h">Cuentas</span><button className="ib" onClick={()=>setSheet(null)}>{I.x}</button></div>
             <div className="sh-body">
-              {accounts.map(acc=>{const prov=PROVIDERS.find(p=>p.id===acc.provider);const isPrimary=acc.id==="g1";return(<div key={acc.id}><div className="acc-i"><div className="acc-av" style={{background:prov?.bg||"#333"}}>{prov?.icon||acc.name[0]}</div><div className="acc-inf"><div className="acc-n">{acc.name}</div><div className="acc-e">{acc.email}</div></div><div style={{display:"flex",alignItems:"center",gap:6}}><button className={`tg ${acc.on?"on":"off"}`} onClick={()=>setAccounts(as=>as.map(a=>a.id===acc.id?{...a,on:!a.on}:a))}><div className="tg-d"/></button>{!isPrimary&&<button className="ib" style={{width:28,height:28,color:"var(--danger)"}} title="Eliminar cuenta" onClick={()=>{setAccounts(as=>as.filter(a=>a.id!==acc.id));setEvents(es=>es.filter(e=>e.isTask||!acc.cals.some(c=>c.id===e.cid)));flash("Cuenta eliminada")}}>{I.trash}</button>}</div></div>{acc.on&&acc.cals.map(cal=>(<div key={cal.id} className="cal-si"><div className="cal-d" style={{background:cal.color}}/><span className="cal-n">{cal.name}</span><button className={`tg ${cal.on?"on":"off"}`} onClick={()=>setAccounts(as=>as.map(a=>a.id===acc.id?{...a,cals:a.cals.map(c=>c.id===cal.id?{...c,on:!c.on}:c)}:a))}><div className="tg-d"/></button></div>))}</div>)})}
+              {accounts.map(acc=>{const prov=PROVIDERS.find(p=>p.id===acc.provider);const isPrimary=acc.id==="g1";return(<div key={acc.id}><div className="acc-i"><div className="acc-av" style={{background:prov?.logoUrl?"#fff":prov?.bg||"#333",border:prov?.logoUrl?"1px solid #e5e7eb":"none"}}>{prov?.logoUrl?<img src={prov.logoUrl} style={{width:20,height:20}}/>:prov?.icon||acc.name[0]}</div><div className="acc-inf"><div className="acc-n">{acc.name}</div><div className="acc-e">{acc.email}</div></div><div style={{display:"flex",alignItems:"center",gap:6}}><button className={`tg ${acc.on?"on":"off"}`} onClick={()=>setAccounts(as=>as.map(a=>a.id===acc.id?{...a,on:!a.on}:a))}><div className="tg-d"/></button>{!isPrimary&&<button className="ib" style={{width:28,height:28,color:"var(--danger)"}} title="Eliminar cuenta" onClick={()=>{setAccounts(as=>as.filter(a=>a.id!==acc.id));setEvents(es=>es.filter(e=>e.isTask||!acc.cals.some(c=>c.id===e.cid)));flash("Cuenta eliminada")}}>{I.trash}</button>}</div></div>{acc.on&&acc.cals.map(cal=>(<div key={cal.id} className="cal-si"><div className="cal-d" style={{background:cal.color}}/><span className="cal-n">{cal.name}</span><button className={`tg ${cal.on?"on":"off"}`} onClick={()=>setAccounts(as=>as.map(a=>a.id===acc.id?{...a,cals:a.cals.map(c=>c.id===cal.id?{...c,on:!c.on}:c)}:a))}><div className="tg-d"/></button></div>))}</div>)})}
               <button className="add-ab" onClick={()=>setSheet("addAcc")}><div className="add-ac">{I.plus}</div>Agregar cuenta</button>
             </div>
           </div>
@@ -2500,7 +2497,7 @@ function MaestroApp({ user, onLogout }){
             <div className="sh-grab"/><div className="sh-head"><span className="sh-h">Conectar cuenta</span><button className="ib" onClick={()=>setSheet("accounts")}>{I.x}</button></div>
             <div className="sh-body">
               <p style={{fontSize:13,color:"var(--t3)",marginBottom:14,lineHeight:1.5}}>Conectá una cuenta para sincronizar calendarios.</p>
-              {PROVIDERS.map(p=>(<div key={p.id} className="prov-c" onClick={()=>{if(p.id==="google"){addGoogleAccount()}else{setAccounts(as=>[...as,{id:uid(),provider:p.id,email:`user@${p.id}.com`,name:p.name,on:true,cals:[{id:uid(),name:"Principal",color:"#6366F1",on:true}]}]);setSheet("accounts");flash(`${p.name} conectado`)}}}><div className="prov-ic" style={{background:p.bg}}>{p.icon}</div><div><div className="prov-n">{p.name}</div><div className="prov-d">{p.id==="google"?"Conectar cuenta real":"Sincronizar calendarios"}</div></div></div>))}
+              {PROVIDERS.map(p=>{const dis=p.id!=="google";return(<div key={p.id} className="prov-c" style={dis?{opacity:0.4,cursor:"not-allowed",pointerEvents:"none"}:{}} onClick={dis?undefined:addGoogleAccount}><div className="prov-ic" style={{background:p.logoUrl?"#fff":p.bg,border:p.logoUrl?"1px solid #e5e7eb":"none"}}>{p.logoUrl?<img src={p.logoUrl} style={{width:22,height:22}}/>:p.icon}</div><div style={{flex:1}}><div className="prov-n">{p.name}{dis&&<span style={{fontSize:10,marginLeft:8,color:"var(--t4)",fontStyle:"italic"}}>Próximamente</span>}</div><div className="prov-d">{p.id==="google"?"Conectar cuenta real":"Sincronizar calendarios"}</div></div></div>);})}
             </div>
           </div>
         )}
