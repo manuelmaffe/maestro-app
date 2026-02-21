@@ -116,7 +116,7 @@ const CSS = () => (
     .top-l{display:flex;align-items:baseline;gap:8px}
     .brand{font-family:var(--fs);font-size:22px;font-style:italic;letter-spacing:-0.5px}
     .tag{font-size:10px;font-family:var(--fm);color:var(--t3);background:var(--bg);padding:2px 7px;border-radius:4px;font-weight:500;letter-spacing:.5px;text-transform:uppercase}
-    .top-r{display:flex;gap:2px;align-items:center}
+    .top-r{display:flex;gap:12px;align-items:center}
     .ib{width:36px;height:36px;border-radius:var(--rs);border:none;background:transparent;color:var(--t2);cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .12s}
     .ib:hover{background:var(--hover);color:var(--t)}
 
@@ -174,11 +174,11 @@ const CSS = () => (
 
     /* Timeline nav buttons */
     .tl-nav-btn{
-      width:24px;height:24px;border:none;background:var(--hover);
+      width:28px;height:28px;border:none;background:var(--brd);
       border-radius:6px;cursor:pointer;display:flex;align-items:center;
-      justify-content:center;color:var(--t3);transition:all .12s;flex-shrink:0;
+      justify-content:center;color:var(--t2);transition:all .12s;flex-shrink:0;
     }
-    .tl-nav-btn:hover{background:var(--brd);color:var(--t)}
+    .tl-nav-btn:hover{background:var(--t4);color:var(--t)}
     .tl-nav-btn:active{transform:scale(.9)}
 
     /* Today quick-access button */
@@ -715,9 +715,9 @@ const CSS = () => (
 
     /* User menu in app */
     .user-avatar{
-      width:32px;height:32px;border-radius:50%;background:var(--t);
+      width:36px;height:36px;border-radius:50%;background:var(--t);
       color:var(--w);display:flex;align-items:center;justify-content:center;
-      font-weight:700;font-size:12px;cursor:pointer;transition:all .12s;
+      font-weight:700;font-size:13px;cursor:pointer;transition:all .12s;
       border:none;flex-shrink:0;
     }
     .user-avatar:hover{opacity:.8}
@@ -1657,7 +1657,7 @@ function MaestroApp({ user, onLogout }){
 
         {/* ── Desktop unified header (only on >=768) ── */}
         <div className="desk-header">
-          <div className="top-l"><span className="brand" onClick={goToday} style={{cursor:"pointer"}}>Maestro</span><span className="tag">{enabledCals.length} cal</span></div>
+          <div className="top-l"><span className="brand" onClick={goToday} style={{cursor:"pointer"}}>Maestro</span><span className="tag">{user?.name}</span></div>
           <div className="top-r">
             <button className="ib add-btn" onClick={openNew}>{I.plus}</button>
             <button className="user-avatar" onClick={()=>setUserMenu(v=>!v)}>
@@ -1673,7 +1673,7 @@ function MaestroApp({ user, onLogout }){
         <div className="mobile-col">
         {/* Mobile-only top */}
         <div className="mob-top">
-          <div className="top-l"><span className="brand" onClick={goToday} style={{cursor:"pointer"}}>Maestro</span><span className="tag">{enabledCals.length} cal</span></div>
+          <div className="top-l"><span className="brand" onClick={goToday} style={{cursor:"pointer"}}>Maestro</span><span className="tag">{user?.name}</span></div>
           <div className="top-r">
             <button className="ib add-btn" onClick={openNew}>{I.plus}</button>
             <button className="user-avatar" onClick={()=>setUserMenu(v=>!v)}>
