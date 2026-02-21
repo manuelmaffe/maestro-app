@@ -103,7 +103,7 @@ const CSS = () => (
 
     /* Desktop: header on top, then side-by-side body */
     @media(min-width:768px){
-      .app{max-width:1100px;flex-direction:column;border-radius:16px;margin-top:16px;height:calc(100dvh - 32px);box-shadow:0 8px 60px rgba(0,0,0,.08)}
+      .app{max-width:100%;flex-direction:column;border-radius:0;margin-top:0;height:100dvh;box-shadow:none;border-left:none;border-right:none}
       .mobile-col{display:flex;flex-direction:column;width:360px;flex-shrink:0;border-right:1px solid var(--bl);position:relative;overflow:hidden}
       .desktop-tl{flex:1;display:flex;flex-direction:column;overflow:hidden;position:relative}
       .desktop-sidebar{display:none}
