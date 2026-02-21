@@ -2,8 +2,34 @@ import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { useGoogleLogin } from "@react-oauth/google";
 import { fetchUserInfo, fetchCalendars, fetchEvents, mapGoogleCalendar, mapGoogleEvent, createEvent, updateEvent, deleteEvent } from "./googleCalendar.js";
 import { supabase } from "./supabase.js";
-import Toggle from "react-toggle";
-import "react-toggle/style.css";
+
+function Toggle({ checked, onChange, disabled }) {
+  return (
+    <button
+      type="button"
+      role="switch"
+      aria-checked={checked}
+      disabled={disabled}
+      onClick={() => !disabled && onChange({ target: { checked: !checked } })}
+      style={{
+        width: 36, height: 20, borderRadius: 10, border: "none", cursor: disabled ? "not-allowed" : "pointer",
+        background: checked ? "#22c55e" : "#d1d5db",
+        position: "relative", flexShrink: 0,
+        transition: "background .2s",
+        opacity: disabled ? 0.5 : 1,
+        padding: 0,
+      }}
+    >
+      <span style={{
+        display: "block", width: 14, height: 14, borderRadius: "50%", background: "#fff",
+        position: "absolute", top: 3,
+        left: checked ? 19 : 3,
+        transition: "left .2s",
+        boxShadow: "0 1px 3px rgba(0,0,0,.25)",
+      }}/>
+    </button>
+  );
+}
 
 const DAYS_SHORT = ["L","M","X","J","V","S","D"];
 const MONTHS = ["Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"];
