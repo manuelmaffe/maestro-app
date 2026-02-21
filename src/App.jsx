@@ -1326,13 +1326,7 @@ function MaestroApp({ user, onLogout }){
     try{ return JSON.parse(localStorage.getItem("maestro_secondary_accounts")||"[]"); }
     catch{ return []; }
   });
-  // Restaurar tareas locales desde localStorage
-  const [events,setEvents]=useState(()=>{
-    try{
-      return JSON.parse(localStorage.getItem("maestro_tasks")||"[]")
-        .map(t=>({...t,date:new Date(t.date)}));
-    }catch{ return []; }
-  });
+  const [events,setEvents]=useState([]);
   const [calLoading,setCalLoading]=useState(false);
   const [selDate,setSelDate]=useState(new Date());
   const [vM,setVM]=useState(MO);
@@ -1384,11 +1378,17 @@ function MaestroApp({ user, onLogout }){
       .sort((a,b)=>(a.sh*60+a.sm)-(b.sh*60+b.sm)),
   [events,enabledCals]);;
 
-  // Persistir tareas locales
+  // Cargar tareas desde Supabase al montar
   useEffect(()=>{
-    try{ localStorage.setItem("maestro_tasks",JSON.stringify(events.filter(e=>e.isTask))); }
-    catch{}
-  },[events]);
+    supabase.from("tasks").select("*").then(({data,error})=>{
+      if(error||!data) return;
+      const tasks=data.map(t=>{
+        const [yr,mn,dy]=t.date.split("-").map(Number);
+        return {id:t.id,title:t.title,desc:t.description||"",cid:"maestro-tasks",date:new Date(yr,mn-1,dy),sh:t.sh??9,sm:t.sm??0,eh:t.eh??10,em:t.em??0,allDay:false,loc:"",videoLink:"",isTask:true,done:t.done||false,priority:t.priority||null};
+      });
+      setEvents(es=>[...es.filter(e=>!e.isTask),...tasks]);
+    });
+  },[]);
 
   // Persistir vista seleccionada
   useEffect(()=>{ localStorage.setItem("maestro_tlview",tlView); },[tlView]);
@@ -1734,8 +1734,15 @@ function MaestroApp({ user, onLogout }){
     const [yr,mn,dy] = form.date.split("-").map(Number);
     const d={title:form.title,desc:form.desc,cid:form.isTask?"maestro-tasks":form.cid,date:new Date(yr,mn-1,dy),sh:+form.sh,sm:+form.sm,eh:+form.eh,em:+form.em,allDay:form.isTask?false:form.allDay,loc:form.isTask?"":form.loc,videoLink:form.isTask?"":form.videoLink,isTask:form.isTask,done:form.done,priority:form.isTask?(form.priority||null):null};
     if(d.isTask){
-      if(form.id){setEvents(es=>es.map(e=>e.id===form.id?{...e,...d}:e));flash("Actualizado")}
-      else{setEvents(es=>[...es,{...d,id:uid()}]);flash("Creado")}
+      const row={title:d.title,description:d.desc,date:fmtDateInput(d.date),sh:d.sh,sm:d.sm,eh:d.eh,em:d.em,done:d.done,priority:d.priority};
+      if(form.id){
+        await supabase.from("tasks").update(row).eq("id",form.id);
+        setEvents(es=>es.map(e=>e.id===form.id?{...e,...d}:e));flash("Actualizado");
+      } else {
+        const {data,error}=await supabase.from("tasks").insert(row).select().single();
+        if(error){flash("Error al guardar");return;}
+        setEvents(es=>[...es,{...d,id:data.id}]);flash("Creado");
+      }
     } else {
       const token=getTokenForCal(d.cid);
       if(token){
@@ -1758,7 +1765,9 @@ function MaestroApp({ user, onLogout }){
   };
   const del=async(id)=>{
     const evt=events.find(e=>e.id===id);
-    if(evt&&!evt.isTask){
+    if(evt?.isTask){
+      await supabase.from("tasks").delete().eq("id",id);
+    } else if(evt&&!evt.isTask){
       const token=getTokenForCal(evt.cid);
       if(token){
         try{ await deleteEvent(token, evt.cid, evt.googleId||id); }
@@ -1767,7 +1776,12 @@ function MaestroApp({ user, onLogout }){
     }
     setEvents(es=>es.filter(e=>e.id!==id));setSheet(null);setExpandedEvt(null);flash("Eliminado");
   };
-  const toggleDone=id=>{setEvents(es=>es.map(e=>e.id===id?{...e,done:!e.done}:e))};
+  const toggleDone=async(id)=>{
+    const evt=events.find(e=>e.id===id);
+    const newDone=!evt?.done;
+    setEvents(es=>es.map(e=>e.id===id?{...e,done:newDone}:e));
+    if(evt?.isTask) await supabase.from("tasks").update({done:newDone}).eq("id",id);
+  };
 
   const fmtDay=d=>{
     if(same(d,today))return"Hoy";
