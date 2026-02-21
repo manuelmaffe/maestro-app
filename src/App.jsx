@@ -1814,11 +1814,11 @@ function MaestroApp({ user, onLogout }){
 
   const openNew=()=>{setFormError("");setForm({title:"",desc:"",cid:enabledCals[0]||"",date:fmtDateInput(selDate),sh:9,sm:0,eh:10,em:0,allDay:false,loc:"",videoLink:"",addMeet:false,isTask:false,isBooking:false,done:false,priority:null});setTlOpen(false);setTlPhase("idle");setExpandedEvt(null);setSheet("new")};
   const openNewAt=(hour,min,date)=>{
-    const sm=Math.round(min/15)*15;
-    const startM=hour*60+(sm>=60?0:sm);
+    const startM=Math.round((hour*60+min)/30)*30; // redondear total a intervalos de 30 min (= opciones del select)
     const sh2=Math.floor(startM/60), sm2=startM%60;
-    const endM=Math.min(24*60-1, startM+60);
+    const endM=Math.min(23*60+30, startM+60);
     const eh2=Math.floor(endM/60), em2=endM%60;
+    setFormError("");
     setForm({title:"",desc:"",cid:enabledCals[0]||"",date:fmtDateInput(date||selDate),sh:sh2,sm:sm2,eh:eh2,em:em2,allDay:false,loc:"",videoLink:"",addMeet:false,isTask:false,isBooking:false,done:false,priority:null});
     setTlOpen(false);setTlPhase("idle");setExpandedEvt(null);setSheet("new");
   };
