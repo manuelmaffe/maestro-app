@@ -2346,7 +2346,10 @@ function MaestroApp({ user, onLogout }){
             onClose={()=>setExpandedEvt(null)}
             onEdit={()=>openEdit(expandedEvt)}
             onDelete={()=>del(expandedEvt.id)}
-            onToggleDone={()=>toggleDone(expandedEvt.id)}/>
+            onToggleDone={()=>{
+              toggleDone(expandedEvt.id);
+              if(!expandedEvt.done) setExpandedEvt(null);
+            }}/>
         )}
 
         {/* Sheets */}
