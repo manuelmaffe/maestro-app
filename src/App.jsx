@@ -2352,7 +2352,7 @@ function MaestroApp({ user, onLogout }){
                   <div className="fg">
                     <label className="fl">Inicio</label>
                     <select className="fi" value={`${form.sh}:${form.sm}`}
-                      onChange={e=>{const[h,m]=e.target.value.split(":").map(Number);setForm(f=>({...f,sh:h,sm:m}))}}>
+                      onChange={e=>{const[h,m]=e.target.value.split(":").map(Number);setForm(f=>{const endM=Math.min(23*60+30,(h*60+m)+60);return{...f,sh:h,sm:m,eh:Math.floor(endM/60),em:endM%60};})}}>
                       {Array.from({length:48},(_,i)=>{
                         const h=Math.floor(i/2),m=(i%2)*30;
                         return (<option key={i} value={`${h}:${m}`}>{fmt(h,m)}</option>);
