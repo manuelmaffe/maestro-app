@@ -723,6 +723,17 @@ const CSS = () => (
     @keyframes fi{from{opacity:0}to{opacity:1}}
     @keyframes su{from{transform:translateY(100%)}to{transform:translateY(0)}}
     @keyframes ti{from{opacity:0;transform:translateX(-50%) translateY(-8px)}to{opacity:1;transform:translateX(-50%) translateY(0)}}
+
+    /* ── Multi-day view ── */
+    .dtl-view-btns{display:flex;gap:2px;background:var(--bg);border-radius:8px;padding:2px}
+    .dtl-view-btn{padding:4px 10px;border:none;border-radius:6px;font-size:11px;font-weight:600;font-family:var(--fm);cursor:pointer;color:var(--t3);background:transparent;transition:all .12s;letter-spacing:-.2px}
+    .dtl-view-btn.active{background:var(--w);color:var(--t);box-shadow:0 1px 4px rgba(0,0,0,.08)}
+    .dtl-day-hdr{display:flex;flex-direction:column;align-items:center;padding:6px 4px;cursor:pointer;gap:2px}
+    .dtl-day-name{font-size:10px;font-weight:600;color:var(--t3);font-family:var(--fm);text-transform:uppercase;letter-spacing:.5px}
+    .dtl-day-num{font-size:18px;font-weight:700;color:var(--t2);width:32px;height:32px;display:flex;align-items:center;justify-content:center;border-radius:50%}
+    .dtl-day-num.today{background:var(--t);color:var(--w)}
+    .dtl-day-num.sel:not(.today){background:var(--hover);color:var(--t)}
+    .dtl-allday-chip{font-size:10px;font-weight:600;padding:2px 6px;border-radius:4px;margin-bottom:2px;cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   `}</style>
 );
 
@@ -1281,6 +1292,7 @@ function MaestroApp({ user, onLogout }){
   const [toast,setToast]=useState(null);
   const [form,setForm]=useState({});
   const [userMenu,setUserMenu]=useState(false);
+  const [tlView,setTlView]=useState("3day"); // "day" | "3day" | "week"
   const tlRef=useRef(null);
   const tlPanelRef=useRef(null);
 
@@ -1298,6 +1310,27 @@ function MaestroApp({ user, onLogout }){
   );
   const recs=useMemo(()=>getRecs(events,selDate,enabledCals),[events,selDate,enabledCals.join(",")]);
   const hasConflict=evt=>{if(evt.allDay)return false;const s=evt.sh*60+evt.sm,e=evt.eh*60+evt.em;return dayEvts.some(o=>o.id!==evt.id&&!o.allDay&&s<(o.eh*60+o.em)&&e>(o.sh*60+o.sm))};
+
+  // Multi-day view: array of Date objects for the current view window
+  const viewDays=useMemo(()=>{
+    const days=[];
+    if(tlView==="day"){
+      days.push(new Date(selDate));
+    } else if(tlView==="3day"){
+      for(let i=0;i<3;i++){const d=new Date(selDate);d.setDate(d.getDate()+i);days.push(d);}
+    } else { // week — Monday to Sunday
+      const dow=selDate.getDay();
+      const monday=new Date(selDate);
+      monday.setDate(selDate.getDate()-(dow===0?6:dow-1));
+      for(let i=0;i<7;i++){const d=new Date(monday);d.setDate(monday.getDate()+i);days.push(d);}
+    }
+    return days;
+  },[selDate,tlView]);
+
+  const getEventsForDay=useCallback((date)=>
+    events.filter(e=>same(e.date,date)&&(e.isTask||enabledCals.includes(e.cid)))
+      .sort((a,b)=>(a.sh*60+a.sm)-(b.sh*60+b.sm)),
+  [events,enabledCals]);;
 
   const flash=msg=>{setToast(msg);setTimeout(()=>setToast(null),2200)};
 
@@ -1508,6 +1541,17 @@ function MaestroApp({ user, onLogout }){
       setVM(next.getMonth()); setVY(next.getFullYear());
     }
   }, [selDate, vM, vY]);
+
+  // Multi-view navigation: advance by 1/3/7 days depending on active view
+  const changeView = useCallback((dir) => {
+    const step = tlView==="day" ? 1 : tlView==="3day" ? 3 : 7;
+    const next = new Date(selDate);
+    next.setDate(next.getDate() + dir * step);
+    setSelDate(next);
+    if(next.getMonth()!==vM||next.getFullYear()!==vY){
+      setVM(next.getMonth()); setVY(next.getFullYear());
+    }
+  }, [selDate, tlView, vM, vY]);
 
   const onSwipeStart = useCallback((e) => {
     const t = e.touches ? e.touches[0] : e;
@@ -1751,6 +1795,117 @@ function MaestroApp({ user, onLogout }){
     </>
   );
 
+  // ── Multi-day timeline (desktop only) ──────────────────────────────────────
+  const renderMultiTimeline = () => {
+    const totalH = tlHours.length * PX_H;
+    const hasAllDay = viewDays.some(d => getEventsForDay(d).some(e => e.allDay && !e.isTask));
+    const DAY_NAMES = ["Dom","Lun","Mar","Mié","Jue","Vie","Sáb"];
+
+    return (
+      <div style={{display:"flex",flexDirection:"column",height:"100%",overflow:"hidden"}}>
+
+        {/* Day headers row */}
+        <div style={{display:"flex",flexShrink:0,borderBottom:"1px solid var(--bl)"}}>
+          <div style={{width:54,flexShrink:0}}/>
+          {viewDays.map((d,i) => {
+            const isToday = same(d, today);
+            const isSel = same(d, selDate);
+            return (
+              <div key={i} className="dtl-day-hdr"
+                style={{flex:1,borderLeft:"1px solid var(--bl)"}}
+                onClick={() => setSelDate(new Date(d))}>
+                <span className="dtl-day-name">{DAY_NAMES[d.getDay()]}</span>
+                <span className={`dtl-day-num${isToday?" today":isSel&&!isToday?" sel":""}`}>{d.getDate()}</span>
+              </div>
+            );
+          })}
+        </div>
+
+        {/* All-day row (conditional) */}
+        {hasAllDay && (
+          <div style={{display:"flex",flexShrink:0,borderBottom:"1px solid var(--bl)",minHeight:32}}>
+            <div style={{width:54,flexShrink:0,fontSize:9,color:"var(--t4)",display:"flex",alignItems:"center",justifyContent:"flex-end",paddingRight:8}}>TODO DÍA</div>
+            {viewDays.map((d,i) => (
+              <div key={i} style={{flex:1,borderLeft:"1px solid var(--bl)",padding:"2px 4px"}}>
+                {getEventsForDay(d).filter(e=>e.allDay&&!e.isTask).map(evt => {
+                  const cal=getCal(evt.cid);
+                  return (
+                    <div key={evt.id} className="dtl-allday-chip"
+                      style={{background:`${cal?.color}22`,borderLeft:`3px solid ${cal?.color}`}}
+                      onClick={()=>setExpandedEvt(evt)}>
+                      {evt.title}
+                    </div>
+                  );
+                })}
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* Scrollable time grid */}
+        <div ref={dtlRef} style={{flex:1,overflowY:"auto",paddingBottom:40}} className="dtl-scroll">
+          <div style={{display:"flex",height:totalH,position:"relative"}}>
+
+            {/* Time gutter */}
+            <div style={{width:54,flexShrink:0,position:"relative"}}>
+              {tlHours.map(h => (
+                <div key={h} className="tl-h-label" style={{height:PX_H,display:"flex",alignItems:"flex-start",justifyContent:"flex-end",paddingRight:10,paddingTop:0,marginTop:0}}>
+                  {fmt(h,0)}
+                </div>
+              ))}
+            </div>
+
+            {/* Day columns */}
+            {viewDays.map((d,i) => {
+              const dayEvtsForCol = getEventsForDay(d).filter(e => !e.allDay);
+              const isToday = same(d, today);
+              const nowTop = isToday ? ((nowH - TL_FIRST_HOUR) * 60 + nowMin) / 60 * PX_H : null;
+              return (
+                <div key={i} style={{flex:1,borderLeft:"1px solid var(--bl)",position:"relative",height:totalH}}>
+                  {/* Hour divider lines / click targets */}
+                  {tlHours.map(h => (
+                    <div key={h} style={{position:"absolute",top:(h-TL_FIRST_HOUR)*PX_H,left:0,right:0,height:PX_H,borderTop:"1px solid var(--bl)",cursor:"pointer"}}
+                      onClick={(e)=>{
+                        if(dragMoved.current) return;
+                        setSelDate(new Date(d));
+                        const rect=e.currentTarget.getBoundingClientRect();
+                        const min=Math.round(((e.clientY-rect.top)/PX_H)*60);
+                        openNewAt(h,min);
+                      }}/>
+                  ))}
+
+                  {/* Now line */}
+                  {nowTop !== null && (
+                    <div className="now-line" style={{position:"absolute",top:nowTop,left:0,right:10,zIndex:4}}>
+                      <div className="now-dot"/><div className="now-rule"/>
+                    </div>
+                  )}
+
+                  {/* Events */}
+                  {dayEvtsForCol.map(evt => {
+                    const cal=getCal(evt.cid);
+                    const evtColor=evt.isTask?"#6366F1":(cal?.color||"#ccc");
+                    const topPx=((evt.sh-TL_FIRST_HOUR)*60+evt.sm)/60*PX_H;
+                    const h2=Math.max(20,((evt.eh*60+evt.em)-(evt.sh*60+evt.sm))/60*PX_H);
+                    return (
+                      <div key={evt.id} className="tl-evt"
+                        style={{position:"absolute",top:topPx,height:h2,left:2,right:4,
+                          borderLeftColor:evtColor,background:`${evtColor}18`,zIndex:2}}
+                        onClick={()=>setExpandedEvt(evt)}>
+                        <div className="tl-evt-title">{evt.title}</div>
+                        {h2>28&&<div className="tl-evt-sub"><span>{fmt(evt.sh,evt.sm)}–{fmt(evt.eh,evt.em)}</span></div>}
+                      </div>
+                    );
+                  })}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   // Desktop timeline ref
   const dtlRef = useRef(null);
   useEffect(()=>{
@@ -1921,27 +2076,25 @@ function MaestroApp({ user, onLogout }){
         <div className="desktop-tl">
           <div className="dtl-head">
             <div className="dtl-title">
-              <button className="tl-nav-btn" onClick={()=>changeDay(-1)}>{I.left}</button>
-              {fmtDay(selDate)}
-              {dayEvts.length>0&&<span className="dtl-cnt">{dayEvts.length}</span>}
-              <button className="tl-nav-btn" onClick={()=>changeDay(1)}>{I.right}</button>
-              {!same(selDate,today) && (
+              <button className="tl-nav-btn" onClick={()=>changeView(-1)}>{I.left}</button>
+              <span style={{fontSize:15}}>
+                {tlView==="day" ? fmtDay(selDate) :
+                  `${viewDays[0].getDate()} ${MONTHS[viewDays[0].getMonth()].slice(0,3)} – ${viewDays[viewDays.length-1].getDate()} ${MONTHS[viewDays[viewDays.length-1].getMonth()].slice(0,3)}`}
+              </span>
+              <button className="tl-nav-btn" onClick={()=>changeView(1)}>{I.right}</button>
+              {!viewDays.some(d=>same(d,today)) && (
                 <button className="dtl-today-btn" onClick={goToday}>Hoy</button>
               )}
             </div>
-          </div>
-          {recs.length>0&&(
-            <div className="dtl-recs">
-              {recs.map((r,i)=>(
-                <div key={i} className={`tl-rec ${r.type}`}>
-                  <div className="tl-rec-i">{r.icon}</div>
-                  <div className="tl-rec-b"><div className="tl-rec-t">{r.title}</div><div className="tl-rec-d">{r.desc}</div></div>
-                </div>
+            <div className="dtl-view-btns">
+              {[["day","Día"],["3day","3 Días"],["week","Semana"]].map(([v,label])=>(
+                <button key={v} className={`dtl-view-btn${tlView===v?" active":""}`}
+                  onClick={()=>setTlView(v)}>{label}</button>
               ))}
             </div>
-          )}
-          <div className="dtl-scroll" ref={dtlRef}>
-            {renderTimeline(dtlRef, true)}
+          </div>
+          <div style={{flex:1,overflow:"hidden",display:"flex",flexDirection:"column"}}>
+            {renderMultiTimeline()}
           </div>
         </div>
 
