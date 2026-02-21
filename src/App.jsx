@@ -51,6 +51,7 @@ const I = {
   share:<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>,
   copy:<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>,
   globe:<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10A15.3 15.3 0 0 1 12 2z"/></svg>,
+  sync:<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>,
 };
 
 const CSS = () => (
@@ -96,7 +97,7 @@ const CSS = () => (
     .brand{font-family:var(--fs);font-size:22px;font-style:italic;letter-spacing:-0.5px}
     .tag{font-size:10px;font-family:var(--fm);color:var(--t3);background:var(--bg);padding:2px 7px;border-radius:4px;font-weight:500;letter-spacing:.5px;text-transform:uppercase}
     .top-r{display:flex;gap:12px;align-items:center}
-    .ib{width:36px;height:36px;border-radius:var(--rs);border:none;background:transparent;color:var(--t2);cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .12s}
+    .ib{width:36px;height:36px;border-radius:var(--rs);border:none;background:transparent;color:var(--t2);cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .12s;padding:0}
     .ib:hover{background:var(--hover);color:var(--t)}
 
     /* Desktop header — spans full width */
@@ -124,7 +125,7 @@ const CSS = () => (
     .ml{font-size:14px;font-weight:600;letter-spacing:-0.3px;display:flex;align-items:center;gap:6px}
     .ml span{color:var(--t3);font-weight:400}
     .marr{display:flex}
-    .ma{width:28px;height:28px;border:none;background:none;color:var(--t3);cursor:pointer;display:flex;align-items:center;justify-content:center;border-radius:var(--rs);transition:all .12s}
+    .ma{width:28px;height:28px;border:none;background:none;color:var(--t3);cursor:pointer;display:flex;align-items:center;justify-content:center;border-radius:var(--rs);transition:all .12s;padding:0}
     .ma:hover{background:var(--hover);color:var(--t)}
     .cgrid{padding:0 16px 4px;flex-shrink:0}
     .wrow{display:grid;grid-template-columns:repeat(7,1fr);margin-bottom:2px}
@@ -155,7 +156,7 @@ const CSS = () => (
     .tl-nav-btn{
       width:28px;height:28px;border:none;background:var(--brd);
       border-radius:6px;cursor:pointer;display:flex;align-items:center;
-      justify-content:center;color:var(--t2);transition:all .12s;flex-shrink:0;
+      justify-content:center;color:var(--t2);transition:all .12s;flex-shrink:0;padding:0;
     }
     .tl-nav-btn:hover{background:var(--t4);color:var(--t)}
     .tl-nav-btn:active{transform:scale(.9)}
@@ -1355,33 +1356,39 @@ function MaestroApp({ user, onLogout }){
   const openTl=()=>{setTlOpen(true);setTlPhase("entering");setTimeout(()=>setTlPhase("idle"),350)};
   const closeTl=useCallback(()=>{setTlPhase("dismissing");setTimeout(()=>{setTlOpen(false);setTlPhase("idle")},300)},[]);
 
-  // Load Google Calendar data on login
-  useEffect(()=>{
+  // Sync calendars — reusable for initial load and manual refresh
+  const syncCalendars=useCallback(async()=>{
     if(!user?.accessToken) return;
     setCalLoading(true);
-    const load = async () => {
-      try {
-        const cals = await fetchCalendars(user.accessToken);
-        setAccounts([{id:"g1",provider:"google",email:user.email,name:user.name||"Google",on:true,accessToken:user.accessToken,cals:cals.map(mapGoogleCalendar)}]);
-        const timeMin = new Date(); timeMin.setDate(timeMin.getDate()-30); timeMin.setHours(0,0,0,0);
-        const timeMax = new Date(); timeMax.setDate(timeMax.getDate()+90);
-        const allEvents = [];
-        for (const cal of cals) {
-          try {
-            const evts = await fetchEvents(user.accessToken, cal.id, timeMin.toISOString(), timeMax.toISOString());
-            allEvents.push(...evts.map(e => mapGoogleEvent(e, cal.id)));
-          } catch(_) { /* skip calendars with access errors */ }
-        }
-        setEvents(allEvents);
-      } catch(e) {
-        console.error("Calendar API error:", e);
-        flash("Error: " + (e.message || "al cargar el calendario"));
-      } finally {
-        setCalLoading(false);
+    try {
+      const cals = await fetchCalendars(user.accessToken);
+      setAccounts(as=>{
+        // Preserve any extra accounts (multi-cuenta) and update the primary
+        const others=as.filter(a=>a.id!=="g1");
+        return [{id:"g1",provider:"google",email:user.email,name:user.name||"Google",on:true,accessToken:user.accessToken,cals:cals.map(mapGoogleCalendar)},...others];
+      });
+      const timeMin = new Date(); timeMin.setDate(timeMin.getDate()-30); timeMin.setHours(0,0,0,0);
+      const timeMax = new Date(); timeMax.setDate(timeMax.getDate()+90);
+      const allEvents = [];
+      for (const cal of cals) {
+        try {
+          const evts = await fetchEvents(user.accessToken, cal.id, timeMin.toISOString(), timeMax.toISOString());
+          allEvents.push(...evts.map(e => mapGoogleEvent(e, cal.id)));
+        } catch(_) {}
       }
-    };
-    load();
+      // Keep local tasks, replace calendar events
+      setEvents(es=>[...es.filter(e=>e.isTask),...allEvents]);
+      flash("Calendarios actualizados");
+    } catch(e) {
+      console.error("Calendar API error:", e);
+      flash("Error: " + (e.message || "al cargar el calendario"));
+    } finally {
+      setCalLoading(false);
+    }
   },[user?.accessToken]);
+
+  // Load on login
+  useEffect(()=>{ syncCalendars(); },[user?.accessToken]);
 
   // Scroll to now when timeline opens
   useEffect(()=>{
@@ -1762,6 +1769,7 @@ function MaestroApp({ user, onLogout }){
         <div className="desk-header">
           <div className="top-l"><span className="brand" onClick={goToday} style={{cursor:"pointer"}}>Maestro</span><span className="tag">{user?.name}</span></div>
           <div className="top-r">
+            <button className="ib" onClick={syncCalendars} title="Sincronizar calendarios" style={{opacity:calLoading?0.5:1}}>{I.sync}</button>
             <button className="ib add-btn" onClick={openNew}>{I.plus}</button>
             <button className="user-avatar" onClick={()=>setUserMenu(v=>!v)}>
               {(user?.name||"U")[0].toUpperCase()}
@@ -1778,6 +1786,7 @@ function MaestroApp({ user, onLogout }){
         <div className="mob-top">
           <div className="top-l"><span className="brand" onClick={goToday} style={{cursor:"pointer"}}>Maestro</span><span className="tag">{user?.name}</span></div>
           <div className="top-r">
+            <button className="ib" onClick={syncCalendars} title="Sincronizar" style={{opacity:calLoading?0.5:1}}>{I.sync}</button>
             <button className="ib add-btn" onClick={openNew}>{I.plus}</button>
             <button className="user-avatar" onClick={()=>setUserMenu(v=>!v)}>
               {(user?.name||"U")[0].toUpperCase()}
