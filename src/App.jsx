@@ -1399,6 +1399,10 @@ function MaestroApp({ user, onLogout }){
     catch{}
   },[accounts]);
 
+  // Ref para acceder a las cuentas actuales dentro de syncCalendars sin dependencias reactivas
+  const accountsRef = useRef(accounts);
+  useEffect(()=>{ accountsRef.current = accounts; },[accounts]);
+
   const flash=msg=>{setToast(msg);setTimeout(()=>setToast(null),2200)};
 
   // Returns the access token for the account that owns a given calendar
@@ -1456,34 +1460,51 @@ function MaestroApp({ user, onLogout }){
   const openTl=()=>{setTlOpen(true);setTlPhase("entering");setTimeout(()=>setTlPhase("idle"),350)};
   const closeTl=useCallback(()=>{setTlPhase("dismissing");setTimeout(()=>{setTlOpen(false);setTlPhase("idle")},300)},[]);
 
-  // Sync calendars — obtiene token fresco de Supabase en cada llamada
+  // Sync calendars — re-fetchea la cuenta primaria (Supabase) y todas las secundarias
   const syncCalendars=useCallback(async()=>{
     setCalLoading(true);
     try {
-      // Token siempre fresco desde Supabase (maneja el refresh automáticamente)
+      const timeMin = new Date(); timeMin.setDate(timeMin.getDate()-30); timeMin.setHours(0,0,0,0);
+      const timeMax = new Date(); timeMax.setDate(timeMax.getDate()+90);
+      const allEvents = [];
+
+      // ── Cuenta primaria (token fresco desde Supabase) ──
       const { data: { session } } = await supabase.auth.getSession();
       const token = session?.provider_token;
       if(!token){ flash("Sesión vencida. Recargá la página."); return; }
       const userEmail = session.user.email;
       const userName = session.user.user_metadata?.full_name || userEmail;
-
       const cals = await fetchCalendars(token);
-      setAccounts(as=>{
-        const others=as.filter(a=>a.id!=="g1");
-        return [{id:"g1",provider:"google",email:userEmail,name:userName,on:true,accessToken:token,cals:cals.map(mapGoogleCalendar)},...others];
-      });
-      const timeMin = new Date(); timeMin.setDate(timeMin.getDate()-30); timeMin.setHours(0,0,0,0);
-      const timeMax = new Date(); timeMax.setDate(timeMax.getDate()+90);
-      const allEvents = [];
+      const primaryAcc = {id:"g1",provider:"google",email:userEmail,name:userName,on:true,accessToken:token,cals:cals.map(mapGoogleCalendar)};
       for (const cal of cals) {
         try {
           const evts = await fetchEvents(token, cal.id, timeMin.toISOString(), timeMax.toISOString());
           allEvents.push(...evts.map(e => mapGoogleEvent(e, cal.id)));
         } catch(_) {}
       }
-      // Conservar tareas locales + eventos de cuentas secundarias; reemplazar solo los de la cuenta primaria
-      const primaryCalIds=cals.map(c=>c.id);
-      setEvents(es=>[...es.filter(e=>e.isTask||!primaryCalIds.includes(e.cid)),...allEvents]);
+
+      // ── Cuentas secundarias (token almacenado, puede estar vencido) ──
+      const secondaryAccounts = accountsRef.current.filter(a=>a.id!=="g1");
+      const updatedSecondary = [];
+      for (const acc of secondaryAccounts) {
+        if (!acc.accessToken) { updatedSecondary.push(acc); continue; }
+        try {
+          const secCals = await fetchCalendars(acc.accessToken);
+          updatedSecondary.push({...acc, cals:secCals.map(mapGoogleCalendar)});
+          for (const cal of secCals) {
+            try {
+              const evts = await fetchEvents(acc.accessToken, cal.id, timeMin.toISOString(), timeMax.toISOString());
+              allEvents.push(...evts.map(e => mapGoogleEvent(e, cal.id)));
+            } catch(_) {}
+          }
+        } catch(_) {
+          // Token vencido para esta cuenta — conservar metadata, omitir eventos
+          updatedSecondary.push(acc);
+        }
+      }
+
+      setAccounts([primaryAcc, ...updatedSecondary]);
+      setEvents(es=>[...es.filter(e=>e.isTask),...allEvents]);
       flash("Calendarios actualizados");
     } catch(e) {
       console.error("Calendar API error:", e);
