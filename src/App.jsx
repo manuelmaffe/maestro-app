@@ -1344,7 +1344,7 @@ function MaestroApp({ user, onLogout }){
   const [toast,setToast]=useState(null);
   const [form,setForm]=useState({});
   const [userMenu,setUserMenu]=useState(false);
-  const [tlView,setTlView]=useState("3day"); // "day" | "3day" | "week"
+  const [tlView,setTlView]=useState(()=>localStorage.getItem("maestro_tlview")||"3day");
   const tlRef=useRef(null);
   const tlPanelRef=useRef(null);
 
@@ -1389,6 +1389,9 @@ function MaestroApp({ user, onLogout }){
     try{ localStorage.setItem("maestro_tasks",JSON.stringify(events.filter(e=>e.isTask))); }
     catch{}
   },[events]);
+
+  // Persistir vista seleccionada
+  useEffect(()=>{ localStorage.setItem("maestro_tlview",tlView); },[tlView]);
 
   // Persistir cuentas secundarias (excluir la primaria g1 que se recrea en cada sync)
   useEffect(()=>{
@@ -1478,7 +1481,9 @@ function MaestroApp({ user, onLogout }){
           allEvents.push(...evts.map(e => mapGoogleEvent(e, cal.id)));
         } catch(_) {}
       }
-      setEvents(es=>[...es.filter(e=>e.isTask),...allEvents]);
+      // Conservar tareas locales + eventos de cuentas secundarias; reemplazar solo los de la cuenta primaria
+      const primaryCalIds=cals.map(c=>c.id);
+      setEvents(es=>[...es.filter(e=>e.isTask||!primaryCalIds.includes(e.cid)),...allEvents]);
       flash("Calendarios actualizados");
     } catch(e) {
       console.error("Calendar API error:", e);
@@ -2410,7 +2415,7 @@ function MaestroApp({ user, onLogout }){
           <div className="sh">
             <div className="sh-grab"/><div className="sh-head"><span className="sh-h">Cuentas</span><button className="ib" onClick={()=>setSheet(null)}>{I.x}</button></div>
             <div className="sh-body">
-              {accounts.map(acc=>{const prov=PROVIDERS.find(p=>p.id===acc.provider);return(<div key={acc.id}><div className="acc-i"><div className="acc-av" style={{background:prov?.bg||"#333"}}>{prov?.icon||acc.name[0]}</div><div className="acc-inf"><div className="acc-n">{acc.name}</div><div className="acc-e">{acc.email}</div></div><button className={`tg ${acc.on?"on":"off"}`} onClick={()=>setAccounts(as=>as.map(a=>a.id===acc.id?{...a,on:!a.on}:a))}><div className="tg-d"/></button></div>{acc.on&&acc.cals.map(cal=>(<div key={cal.id} className="cal-si"><div className="cal-d" style={{background:cal.color}}/><span className="cal-n">{cal.name}</span><button className={`tg ${cal.on?"on":"off"}`} onClick={()=>setAccounts(as=>as.map(a=>a.id===acc.id?{...a,cals:a.cals.map(c=>c.id===cal.id?{...c,on:!c.on}:c)}:a))}><div className="tg-d"/></button></div>))}</div>)})}
+              {accounts.map(acc=>{const prov=PROVIDERS.find(p=>p.id===acc.provider);const isPrimary=acc.id==="g1";return(<div key={acc.id}><div className="acc-i"><div className="acc-av" style={{background:prov?.bg||"#333"}}>{prov?.icon||acc.name[0]}</div><div className="acc-inf"><div className="acc-n">{acc.name}</div><div className="acc-e">{acc.email}</div></div><div style={{display:"flex",alignItems:"center",gap:6}}><button className={`tg ${acc.on?"on":"off"}`} onClick={()=>setAccounts(as=>as.map(a=>a.id===acc.id?{...a,on:!a.on}:a))}><div className="tg-d"/></button>{!isPrimary&&<button className="ib" style={{width:28,height:28,color:"var(--danger)"}} title="Eliminar cuenta" onClick={()=>{setAccounts(as=>as.filter(a=>a.id!==acc.id));setEvents(es=>es.filter(e=>e.isTask||!acc.cals.some(c=>c.id===e.cid)));flash("Cuenta eliminada")}}>{I.trash}</button>}</div></div>{acc.on&&acc.cals.map(cal=>(<div key={cal.id} className="cal-si"><div className="cal-d" style={{background:cal.color}}/><span className="cal-n">{cal.name}</span><button className={`tg ${cal.on?"on":"off"}`} onClick={()=>setAccounts(as=>as.map(a=>a.id===acc.id?{...a,cals:a.cals.map(c=>c.id===cal.id?{...c,on:!c.on}:c)}:a))}><div className="tg-d"/></button></div>))}</div>)})}
               <button className="add-ab" onClick={()=>setSheet("addAcc")}><div className="add-ac">{I.plus}</div>Agregar cuenta</button>
             </div>
           </div>
