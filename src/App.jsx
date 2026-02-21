@@ -1423,6 +1423,15 @@ function MaestroApp({ user, onLogout }){
     catch{}
   },[accounts]);
 
+  // Persistir preferencias on/off de cuentas y calendarios
+  useEffect(()=>{
+    try{
+      const prefs={};
+      for(const acc of accounts){ prefs[acc.id]=acc.on; for(const c of acc.cals) prefs[c.id]=c.on; }
+      localStorage.setItem("maestro_cal_prefs",JSON.stringify(prefs));
+    }catch{}
+  },[accounts]);
+
   // Ref para acceder a las cuentas actuales dentro de syncCalendars sin dependencias reactivas
   const accountsRef = useRef(accounts);
   useEffect(()=>{ accountsRef.current = accounts; },[accounts]);
@@ -1527,7 +1536,9 @@ function MaestroApp({ user, onLogout }){
         }
       }
 
-      setAccounts([primaryAcc, ...updatedSecondary]);
+      const prefs=JSON.parse(localStorage.getItem("maestro_cal_prefs")||"{}");
+      const applyPrefs=acc=>({...acc,on:prefs[acc.id]??acc.on,cals:acc.cals.map(c=>({...c,on:prefs[c.id]??c.on}))});
+      setAccounts([applyPrefs(primaryAcc),...updatedSecondary.map(applyPrefs)]);
       setEvents(es=>[...es.filter(e=>e.isTask),...allEvents]);
       flash("Calendarios actualizados");
     } catch(e) {
