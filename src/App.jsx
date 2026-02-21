@@ -1257,6 +1257,7 @@ function AuthScreen({ onLogin }) {
 // ── Main ──
 function sessionToUser(session) {
   return {
+    id: session.user.id,
     name: session.user.user_metadata?.full_name || session.user.email,
     email: session.user.email,
     picture: session.user.user_metadata?.avatar_url,
@@ -1734,7 +1735,7 @@ function MaestroApp({ user, onLogout }){
     const [yr,mn,dy] = form.date.split("-").map(Number);
     const d={title:form.title,desc:form.desc,cid:form.isTask?"maestro-tasks":form.cid,date:new Date(yr,mn-1,dy),sh:+form.sh,sm:+form.sm,eh:+form.eh,em:+form.em,allDay:form.isTask?false:form.allDay,loc:form.isTask?"":form.loc,videoLink:form.isTask?"":form.videoLink,isTask:form.isTask,done:form.done,priority:form.isTask?(form.priority||null):null};
     if(d.isTask){
-      const row={title:d.title,description:d.desc,date:fmtDateInput(d.date),sh:d.sh,sm:d.sm,eh:d.eh,em:d.em,done:d.done,priority:d.priority};
+      const row={user_id:user.id,title:d.title,description:d.desc,date:fmtDateInput(d.date),sh:d.sh,sm:d.sm,eh:d.eh,em:d.em,done:d.done,priority:d.priority};
       if(form.id){
         await supabase.from("tasks").update(row).eq("id",form.id);
         setEvents(es=>es.map(e=>e.id===form.id?{...e,...d}:e));flash("Actualizado");
