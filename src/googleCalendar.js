@@ -46,18 +46,20 @@ export async function fetchEvents(token, calendarId, timeMin, timeMax) {
 
 export async function createEvent(token, calendarId, appEvent) {
   const encoded = encodeURIComponent(calendarId);
+  const qs = appEvent.addMeet ? "?conferenceDataVersion=1" : "";
   return apiFetch(
     token,
-    `${BASE}/calendar/v3/calendars/${encoded}/events`,
+    `${BASE}/calendar/v3/calendars/${encoded}/events${qs}`,
     { method: "POST", body: JSON.stringify(appEventToGoogle(appEvent)) }
   );
 }
 
 export async function updateEvent(token, calendarId, googleEventId, appEvent) {
   const encoded = encodeURIComponent(calendarId);
+  const qs = appEvent.addMeet ? "?conferenceDataVersion=1" : "";
   return apiFetch(
     token,
-    `${BASE}/calendar/v3/calendars/${encoded}/events/${googleEventId}`,
+    `${BASE}/calendar/v3/calendars/${encoded}/events/${googleEventId}${qs}`,
     { method: "PUT", body: JSON.stringify(appEventToGoogle(appEvent)) }
   );
 }
@@ -104,6 +106,9 @@ export function mapGoogleEvent(gEvent, calendarId) {
     em = endDt.getMinutes();
   }
 
+  const meetEntry = gEvent.conferenceData?.entryPoints?.find(e => e.entryPointType === "video");
+  const videoLink = meetEntry?.uri || gEvent.hangoutLink || "";
+
   return {
     id: gEvent.id,
     googleId: gEvent.id,
@@ -114,10 +119,18 @@ export function mapGoogleEvent(gEvent, calendarId) {
     allDay,
     desc: gEvent.description || "",
     loc: gEvent.location || "",
+    videoLink,
   };
 }
 
 function appEventToGoogle(appEvent) {
+  const conferenceData = appEvent.addMeet ? {
+    createRequest: {
+      requestId: `maestro-${Date.now()}-${Math.random().toString(36).slice(2)}`,
+      conferenceSolutionKey: { type: "hangoutsMeet" },
+    },
+  } : undefined;
+
   if (appEvent.allDay) {
     const pad = n => String(n).padStart(2, "0");
     const d = appEvent.date;
@@ -128,6 +141,7 @@ function appEventToGoogle(appEvent) {
       location: appEvent.loc || "",
       start: { date: dateStr },
       end: { date: dateStr },
+      ...(conferenceData && { conferenceData }),
     };
   }
   const startDt = new Date(appEvent.date);
@@ -140,5 +154,6 @@ function appEventToGoogle(appEvent) {
     location: appEvent.loc || "",
     start: { dateTime: startDt.toISOString(), timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone },
     end: { dateTime: endDt.toISOString(), timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone },
+    ...(conferenceData && { conferenceData }),
   };
 }

@@ -1780,21 +1780,21 @@ function MaestroApp({ user, onLogout }){
 
   const fmtDateInput = d => `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
 
-  const openNew=()=>{setForm({title:"",desc:"",cid:enabledCals[0]||"",date:fmtDateInput(selDate),sh:9,sm:0,eh:10,em:0,allDay:false,loc:"",videoLink:"",isTask:false,isBooking:false,done:false,priority:null});setTlOpen(false);setTlPhase("idle");setExpandedEvt(null);setSheet("new")};
+  const openNew=()=>{setForm({title:"",desc:"",cid:enabledCals[0]||"",date:fmtDateInput(selDate),sh:9,sm:0,eh:10,em:0,allDay:false,loc:"",videoLink:"",addMeet:false,isTask:false,isBooking:false,done:false,priority:null});setTlOpen(false);setTlPhase("idle");setExpandedEvt(null);setSheet("new")};
   const openNewAt=(hour,min,date)=>{
     const sm=Math.round(min/15)*15;
     const startM=hour*60+(sm>=60?0:sm);
     const sh2=Math.floor(startM/60), sm2=startM%60;
     const endM=Math.min(24*60-1, startM+60);
     const eh2=Math.floor(endM/60), em2=endM%60;
-    setForm({title:"",desc:"",cid:enabledCals[0]||"",date:fmtDateInput(date||selDate),sh:sh2,sm:sm2,eh:eh2,em:em2,allDay:false,loc:"",videoLink:"",isTask:false,isBooking:false,done:false,priority:null});
+    setForm({title:"",desc:"",cid:enabledCals[0]||"",date:fmtDateInput(date||selDate),sh:sh2,sm:sm2,eh:eh2,em:em2,allDay:false,loc:"",videoLink:"",addMeet:false,isTask:false,isBooking:false,done:false,priority:null});
     setTlOpen(false);setTlPhase("idle");setExpandedEvt(null);setSheet("new");
   };
-  const openEdit=evt=>{setForm({id:evt.id,title:evt.title,desc:evt.desc||"",cid:evt.cid,date:fmtDateInput(evt.date),sh:evt.sh,sm:evt.sm,eh:evt.eh,em:evt.em,allDay:evt.allDay||false,loc:evt.loc||"",videoLink:evt.videoLink||"",isTask:evt.isTask||false,done:evt.done||false,priority:evt.priority||null});setExpandedEvt(null);setTlOpen(false);setTlPhase("idle");setSheet("edit")};
+  const openEdit=evt=>{setForm({id:evt.id,title:evt.title,desc:evt.desc||"",cid:evt.cid,date:fmtDateInput(evt.date),sh:evt.sh,sm:evt.sm,eh:evt.eh,em:evt.em,allDay:evt.allDay||false,loc:evt.loc||"",videoLink:evt.videoLink||"",addMeet:!!(evt.videoLink),isTask:evt.isTask||false,done:evt.done||false,priority:evt.priority||null});setExpandedEvt(null);setTlOpen(false);setTlPhase("idle");setSheet("edit")};
   const save=async()=>{
     if(!form.title.trim())return;
     const [yr,mn,dy] = form.date.split("-").map(Number);
-    const d={title:form.title,desc:form.desc,cid:form.isTask?"maestro-tasks":form.cid,date:new Date(yr,mn-1,dy),sh:+form.sh,sm:+form.sm,eh:+form.eh,em:+form.em,allDay:form.isTask?false:form.allDay,loc:form.isTask?"":form.loc,videoLink:form.isTask?"":form.videoLink,isTask:form.isTask,done:form.done,priority:form.isTask?(form.priority||null):null};
+    const d={title:form.title,desc:form.desc,cid:form.isTask?"maestro-tasks":form.cid,date:new Date(yr,mn-1,dy),sh:+form.sh,sm:+form.sm,eh:+form.eh,em:+form.em,allDay:form.isTask?false:form.allDay,loc:form.isTask?"":form.loc,videoLink:form.isTask?"":form.videoLink,addMeet:!form.isTask&&form.addMeet&&!form.videoLink,isTask:form.isTask,done:form.done,priority:form.isTask?(form.priority||null):null};
     if(d.isTask){
       const row={user_id:user.id,title:d.title,description:d.desc,date:fmtDateInput(d.date),sh:d.sh,sm:d.sm,eh:d.eh,em:d.em,done:d.done,priority:d.priority};
       if(form.id){
@@ -1815,7 +1815,9 @@ function MaestroApp({ user, onLogout }){
             setEvents(es=>es.map(e=>e.id===form.id?{...e,...d}:e));flash("Actualizado");
           } else {
             const gEvt=await createEvent(token, d.cid, d);
-            setEvents(es=>[...es,{...d,id:gEvt.id,googleId:gEvt.id}]);flash("Creado");
+            const meetEntry=gEvt.conferenceData?.entryPoints?.find(e=>e.entryPointType==="video");
+            const meetUrl=meetEntry?.uri||gEvt.hangoutLink||"";
+            setEvents(es=>[...es,{...d,id:gEvt.id,googleId:gEvt.id,videoLink:meetUrl}]);flash("Creado");
           }
         } catch(e){ flash("Error al guardar el evento"); return; }
       } else {
@@ -2467,25 +2469,21 @@ function MaestroApp({ user, onLogout }){
                 </div>
               )}
 
-              {/* Video link — events only */}
+              {/* Google Meet — events only */}
               {!form.isTask && (
-                <div className="fg">
-                  <label className="fl">{I.video} Videollamada</label>
-                <div className="video-field">
-                  <input className="fi" placeholder="https://meet.google.com/..."
-                    value={form.videoLink} onChange={e=>setForm(f=>({...f,videoLink:e.target.value}))} />
-                  <div className="video-quick">
-                    <button type="button" className="vq-btn"
-                      onClick={()=>setForm(f=>({...f,videoLink:"https://meet.google.com/new"}))}>
-                      Meet
-                    </button>
-                    <button type="button" className="vq-btn"
-                      onClick={()=>setForm(f=>({...f,videoLink:"https://zoom.us/j/new"}))}>
-                      Zoom
-                    </button>
+                <div className="fr" style={{alignItems:"center",padding:"4px 0"}}>
+                  <div style={{flex:1}}>
+                    <div className="fl" style={{marginBottom:0}}>{I.video} Google Meet</div>
+                    {form.videoLink
+                      ? <a href={form.videoLink} target="_blank" rel="noopener noreferrer" style={{fontSize:11,color:"var(--blue)",textDecoration:"none"}}>{form.videoLink}</a>
+                      : <div style={{fontSize:11,color:"var(--t4)"}}>Se generará al guardar</div>}
                   </div>
+                  <button className={`tg ${form.addMeet||form.videoLink?"on":"off"}`}
+                    disabled={!!form.videoLink}
+                    onClick={()=>setForm(f=>({...f,addMeet:!f.addMeet}))}>
+                    <div className="tg-d"/>
+                  </button>
                 </div>
-              </div>
               )}
 
               {!form.isTask && <div className="form-div" />}
