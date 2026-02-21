@@ -1,4 +1,6 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
+import { useGoogleLogin } from "@react-oauth/google";
+import { fetchUserInfo, fetchCalendars, fetchEvents, mapGoogleCalendar, mapGoogleEvent, createEvent, updateEvent, deleteEvent } from "./googleCalendar.js";
 
 const DAYS_SHORT = ["L","M","X","J","V","S","D"];
 const MONTHS = ["Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"];
@@ -16,29 +18,6 @@ const PROVIDERS = [
   {id:"google",name:"Google",icon:"G",bg:"#EA4335"},
   {id:"outlook",name:"Outlook",icon:"O",bg:"#0078D4"},
   {id:"apple",name:"Apple",icon:"",bg:"#333"},
-];
-const INIT_ACC = [
-  {id:"a1",provider:"google",email:"manu@gmail.com",name:"Personal",on:true,
-    cals:[{id:"c1",name:"Personal",color:"#2563EB",on:true},{id:"c2",name:"Cumpleaños",color:"#EC4899",on:true}]},
-  {id:"a2",provider:"google",email:"manu@p4d.ai",name:"P4D",on:true,
-    cals:[{id:"c3",name:"P4D Reuniones",color:"#059669",on:true},{id:"c4",name:"P4D Demos",color:"#0891B2",on:true}]},
-  {id:"a3",provider:"outlook",email:"manu@iadb.org",name:"BID",on:true,
-    cals:[{id:"c5",name:"BID Trabajo",color:"#7C3AED",on:true}]},
-];
-const INIT_EVTS = [
-  {id:"e1",title:"Standup P4D",cid:"c3",date:new Date(YR,MO,DA),sh:9,sm:0,eh:9,em:30,desc:"Daily con Mariano y Matías",loc:"Google Meet"},
-  {id:"e13",title:"1:1 con Mariano",cid:"c3",date:new Date(YR,MO,DA),sh:9,sm:30,eh:10,em:0,desc:"Sync técnico semanal"},
-  {id:"e2",title:"Demo SanCor Salud",cid:"c4",date:new Date(YR,MO,DA),sh:11,sm:0,eh:12,em:0,desc:"Presentar flujos WhatsApp",loc:"Zoom"},
-  {id:"e3",title:"Almuerzo inversor",cid:"c1",date:new Date(YR,MO,DA),sh:13,sm:0,eh:14,em:30,desc:"Café en Palermo",loc:"Chez Nous"},
-  {id:"e4",title:"Comité Digital Health",cid:"c5",date:new Date(YR,MO,DA),sh:15,sm:0,eh:16,em:0,desc:"Revisión Q1",loc:"Oficina BID"},
-  {id:"e5",title:"Clase MBA — IAE",cid:"c1",date:new Date(YR,MO,DA),sh:18,sm:30,eh:21,em:0,desc:"Estrategia Competitiva"},
-  {id:"e6",title:"Call Andreani",cid:"c3",date:new Date(YR,MO,DA+1),sh:10,sm:0,eh:10,em:45,loc:"Google Meet"},
-  {id:"e7",title:"Sprint Planning",cid:"c3",date:new Date(YR,MO,DA+1),sh:14,sm:0,eh:15,em:0},
-  {id:"e8",title:"Dentista",cid:"c1",date:new Date(YR,MO,DA+2),sh:9,sm:0,eh:9,em:45},
-  {id:"e9",title:"Workshop Boring Club",cid:"c1",date:new Date(YR,MO,DA+3),sh:16,sm:0,eh:18,em:0},
-  {id:"e10",title:"Cumpleaños Mamá",cid:"c2",date:new Date(YR,MO,DA+5),sh:0,sm:0,eh:23,em:59,allDay:true},
-  {id:"e11",title:"Presupuesto BID Q2",cid:"c5",date:new Date(YR,MO,DA+1),sh:11,sm:0,eh:12,em:0},
-  {id:"e14",title:"Investor deck review",cid:"c3",date:new Date(YR,MO,DA+2),sh:14,sm:0,eh:16,em:0},
 ];
 
 function getRecs(events,date,calIds){
@@ -1161,6 +1140,30 @@ function AuthScreen({ onLogin }) {
     setTimeout(() => { setLoading(false); onLogin({ email: `user@${provider}.com`, name: "Manu" }); }, 800);
   };
 
+  const googleLogin = useGoogleLogin({
+    onSuccess: async (tokenResponse) => {
+      setLoading(true);
+      try {
+        const userInfo = await fetchUserInfo(tokenResponse.access_token);
+        onLogin({
+          email: userInfo.email,
+          name: userInfo.name,
+          picture: userInfo.picture,
+          accessToken: tokenResponse.access_token,
+        });
+      } catch (e) {
+        setError("Error al conectar con Google. Intentá de nuevo.");
+        setLoading(false);
+      }
+    },
+    onError: () => {
+      setError("Error al conectar con Google. Intentá de nuevo.");
+      setLoading(false);
+    },
+    scope: "https://www.googleapis.com/auth/calendar email profile",
+    flow: "implicit",
+  });
+
   return (
     <div className="auth-wrap">
       <div className="auth-bg" />
@@ -1173,7 +1176,7 @@ function AuthScreen({ onLogin }) {
 
         {/* Provider buttons */}
         <div className="auth-providers">
-          <button className="auth-prov-btn" onClick={() => providerLogin("google")} disabled={loading}>
+          <button className="auth-prov-btn" onClick={() => googleLogin()} disabled={loading}>
             <span className="auth-prov-icon" style={{background:"#EA4335"}}>G</span>
             <span>Continuar con Google</span>
           </button>
@@ -1264,8 +1267,9 @@ export default function Maestro(){
 }
 
 function MaestroApp({ user, onLogout }){
-  const [accounts,setAccounts]=useState(INIT_ACC);
-  const [events,setEvents]=useState(INIT_EVTS);
+  const [accounts,setAccounts]=useState([]);
+  const [events,setEvents]=useState([]);
+  const [calLoading,setCalLoading]=useState(false);
   const [selDate,setSelDate]=useState(new Date());
   const [vM,setVM]=useState(MO);
   const [vY,setVY]=useState(YR);
@@ -1308,6 +1312,33 @@ function MaestroApp({ user, onLogout }){
   // Open timeline
   const openTl=()=>{setTlOpen(true);setTlPhase("entering");setTimeout(()=>setTlPhase("idle"),350)};
   const closeTl=useCallback(()=>{setTlPhase("dismissing");setTimeout(()=>{setTlOpen(false);setTlPhase("idle")},300)},[]);
+
+  // Load Google Calendar data on login
+  useEffect(()=>{
+    if(!user?.accessToken) return;
+    setCalLoading(true);
+    const load = async () => {
+      try {
+        const cals = await fetchCalendars(user.accessToken);
+        setAccounts([{id:"g1",provider:"google",email:user.email,name:user.name||"Google",on:true,cals:cals.map(mapGoogleCalendar)}]);
+        const timeMin = new Date(); timeMin.setDate(timeMin.getDate()-30); timeMin.setHours(0,0,0,0);
+        const timeMax = new Date(); timeMax.setDate(timeMax.getDate()+90);
+        const allEvents = [];
+        for (const cal of cals) {
+          try {
+            const evts = await fetchEvents(user.accessToken, cal.id, timeMin.toISOString(), timeMax.toISOString());
+            allEvents.push(...evts.map(e => mapGoogleEvent(e, cal.id)));
+          } catch(_) { /* skip calendars with access errors */ }
+        }
+        setEvents(allEvents);
+      } catch(e) {
+        flash("Error al cargar el calendario de Google");
+      } finally {
+        setCalLoading(false);
+      }
+    };
+    load();
+  },[user?.accessToken]);
 
   // Scroll to now when timeline opens
   useEffect(()=>{
@@ -1510,15 +1541,38 @@ function MaestroApp({ user, onLogout }){
     setTlOpen(false);setTlPhase("idle");setExpandedEvt(null);setSheet("new");
   };
   const openEdit=evt=>{setForm({id:evt.id,title:evt.title,desc:evt.desc||"",cid:evt.cid,date:fmtDateInput(evt.date),sh:evt.sh,sm:evt.sm,eh:evt.eh,em:evt.em,allDay:evt.allDay||false,loc:evt.loc||"",videoLink:evt.videoLink||"",isTask:evt.isTask||false,done:evt.done||false,priority:evt.priority||null});setExpandedEvt(null);setTlOpen(false);setTlPhase("idle");setSheet("edit")};
-  const save=()=>{
+  const save=async()=>{
     if(!form.title.trim())return;
     const [yr,mn,dy] = form.date.split("-").map(Number);
     const d={title:form.title,desc:form.desc,cid:form.isTask?"maestro-tasks":form.cid,date:new Date(yr,mn-1,dy),sh:+form.sh,sm:+form.sm,eh:+form.eh,em:+form.em,allDay:form.isTask?false:form.allDay,loc:form.isTask?"":form.loc,videoLink:form.isTask?"":form.videoLink,isTask:form.isTask,done:form.done,priority:form.isTask?(form.priority||null):null};
-    if(form.id){setEvents(es=>es.map(e=>e.id===form.id?{...e,...d}:e));flash("Actualizado")}
-    else{setEvents(es=>[...es,{...d,id:uid()}]);flash("Creado")}
+    if(d.isTask){
+      if(form.id){setEvents(es=>es.map(e=>e.id===form.id?{...e,...d}:e));flash("Actualizado")}
+      else{setEvents(es=>[...es,{...d,id:uid()}]);flash("Creado")}
+    } else if(user?.accessToken){
+      try{
+        if(form.id){
+          const evt=events.find(e=>e.id===form.id);
+          await updateEvent(user.accessToken, d.cid, evt?.googleId||form.id, d);
+          setEvents(es=>es.map(e=>e.id===form.id?{...e,...d}:e));flash("Actualizado");
+        } else {
+          const gEvt=await createEvent(user.accessToken, d.cid, d);
+          setEvents(es=>[...es,{...d,id:gEvt.id,googleId:gEvt.id}]);flash("Creado");
+        }
+      } catch(e){ flash("Error al guardar el evento"); return; }
+    } else {
+      if(form.id){setEvents(es=>es.map(e=>e.id===form.id?{...e,...d}:e));flash("Actualizado")}
+      else{setEvents(es=>[...es,{...d,id:uid()}]);flash("Creado")}
+    }
     setSheet(null);
   };
-  const del=id=>{setEvents(es=>es.filter(e=>e.id!==id));setSheet(null);setExpandedEvt(null);flash("Eliminado")};
+  const del=async(id)=>{
+    const evt=events.find(e=>e.id===id);
+    if(evt&&!evt.isTask&&user?.accessToken){
+      try{ await deleteEvent(user.accessToken, evt.cid, evt.googleId||id); }
+      catch(e){ flash("Error al eliminar el evento"); return; }
+    }
+    setEvents(es=>es.filter(e=>e.id!==id));setSheet(null);setExpandedEvt(null);flash("Eliminado");
+  };
   const toggleDone=id=>{setEvents(es=>es.map(e=>e.id===id?{...e,done:!e.done}:e))};
 
   const fmtDay=d=>{
