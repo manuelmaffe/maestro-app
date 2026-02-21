@@ -1299,6 +1299,48 @@ function MaestroApp({ user, onLogout }){
   const hasConflict=evt=>{if(evt.allDay)return false;const s=evt.sh*60+evt.sm,e=evt.eh*60+evt.em;return dayEvts.some(o=>o.id!==evt.id&&!o.allDay&&s<(o.eh*60+o.em)&&e>(o.sh*60+o.sm))};
 
   const flash=msg=>{setToast(msg);setTimeout(()=>setToast(null),2200)};
+
+  // Returns the access token for the account that owns a given calendar
+  const getTokenForCal=useCallback((calId)=>{
+    for(const acc of accounts){
+      if(acc.cals?.some(c=>c.id===calId)) return acc.accessToken||user?.accessToken;
+    }
+    return user?.accessToken;
+  },[accounts,user?.accessToken]);
+
+  // Add additional Google account from within the app
+  const addGoogleAccount=useGoogleLogin({
+    onSuccess: async (tokenResponse)=>{
+      try{
+        const [userInfo,cals]=await Promise.all([
+          fetchUserInfo(tokenResponse.access_token),
+          fetchCalendars(tokenResponse.access_token),
+        ]);
+        const newAcc={id:uid(),provider:"google",email:userInfo.email,name:userInfo.name||userInfo.email,on:true,accessToken:tokenResponse.access_token,cals:cals.map(mapGoogleCalendar)};
+        setAccounts(as=>[...as,newAcc]);
+        const timeMin=new Date(); timeMin.setDate(timeMin.getDate()-30); timeMin.setHours(0,0,0,0);
+        const timeMax=new Date(); timeMax.setDate(timeMax.getDate()+90);
+        const newEvts=[];
+        for(const cal of cals){
+          try{
+            const evts=await fetchEvents(tokenResponse.access_token,cal.id,timeMin.toISOString(),timeMax.toISOString());
+            newEvts.push(...evts.map(e=>mapGoogleEvent(e,cal.id)));
+          }catch(_){}
+        }
+        setEvents(es=>[...es,...newEvts]);
+        setSheet("accounts");
+        flash(`${userInfo.name||userInfo.email} conectado`);
+      }catch(e){
+        console.error("Error adding account:",e);
+        flash("Error al conectar la cuenta");
+      }
+    },
+    onError:()=>flash("Error al conectar con Google"),
+    scope:"https://www.googleapis.com/auth/calendar email profile",
+    flow:"implicit",
+    prompt:"select_account",
+  });
+
   const prevMonth=()=>{if(vM===0){setVM(11);setVY(y=>y-1)}else setVM(m=>m-1)};
   const nextMonth=()=>{if(vM===11){setVM(0);setVY(y=>y+1)}else setVM(m=>m+1)};
   const goToday=()=>{setVM(MO);setVY(YR);setSelDate(new Date())};
@@ -1320,7 +1362,7 @@ function MaestroApp({ user, onLogout }){
     const load = async () => {
       try {
         const cals = await fetchCalendars(user.accessToken);
-        setAccounts([{id:"g1",provider:"google",email:user.email,name:user.name||"Google",on:true,cals:cals.map(mapGoogleCalendar)}]);
+        setAccounts([{id:"g1",provider:"google",email:user.email,name:user.name||"Google",on:true,accessToken:user.accessToken,cals:cals.map(mapGoogleCalendar)}]);
         const timeMin = new Date(); timeMin.setDate(timeMin.getDate()-30); timeMin.setHours(0,0,0,0);
         const timeMax = new Date(); timeMax.setDate(timeMax.getDate()+90);
         const allEvents = [];
@@ -1332,7 +1374,8 @@ function MaestroApp({ user, onLogout }){
         }
         setEvents(allEvents);
       } catch(e) {
-        flash("Error al cargar el calendario de Google");
+        console.error("Calendar API error:", e);
+        flash("Error: " + (e.message || "al cargar el calendario"));
       } finally {
         setCalLoading(false);
       }
@@ -1548,28 +1591,34 @@ function MaestroApp({ user, onLogout }){
     if(d.isTask){
       if(form.id){setEvents(es=>es.map(e=>e.id===form.id?{...e,...d}:e));flash("Actualizado")}
       else{setEvents(es=>[...es,{...d,id:uid()}]);flash("Creado")}
-    } else if(user?.accessToken){
-      try{
-        if(form.id){
-          const evt=events.find(e=>e.id===form.id);
-          await updateEvent(user.accessToken, d.cid, evt?.googleId||form.id, d);
-          setEvents(es=>es.map(e=>e.id===form.id?{...e,...d}:e));flash("Actualizado");
-        } else {
-          const gEvt=await createEvent(user.accessToken, d.cid, d);
-          setEvents(es=>[...es,{...d,id:gEvt.id,googleId:gEvt.id}]);flash("Creado");
-        }
-      } catch(e){ flash("Error al guardar el evento"); return; }
     } else {
-      if(form.id){setEvents(es=>es.map(e=>e.id===form.id?{...e,...d}:e));flash("Actualizado")}
-      else{setEvents(es=>[...es,{...d,id:uid()}]);flash("Creado")}
+      const token=getTokenForCal(d.cid);
+      if(token){
+        try{
+          if(form.id){
+            const evt=events.find(e=>e.id===form.id);
+            await updateEvent(token, d.cid, evt?.googleId||form.id, d);
+            setEvents(es=>es.map(e=>e.id===form.id?{...e,...d}:e));flash("Actualizado");
+          } else {
+            const gEvt=await createEvent(token, d.cid, d);
+            setEvents(es=>[...es,{...d,id:gEvt.id,googleId:gEvt.id}]);flash("Creado");
+          }
+        } catch(e){ flash("Error al guardar el evento"); return; }
+      } else {
+        if(form.id){setEvents(es=>es.map(e=>e.id===form.id?{...e,...d}:e));flash("Actualizado")}
+        else{setEvents(es=>[...es,{...d,id:uid()}]);flash("Creado")}
+      }
     }
     setSheet(null);
   };
   const del=async(id)=>{
     const evt=events.find(e=>e.id===id);
-    if(evt&&!evt.isTask&&user?.accessToken){
-      try{ await deleteEvent(user.accessToken, evt.cid, evt.googleId||id); }
-      catch(e){ flash("Error al eliminar el evento"); return; }
+    if(evt&&!evt.isTask){
+      const token=getTokenForCal(evt.cid);
+      if(token){
+        try{ await deleteEvent(token, evt.cid, evt.googleId||id); }
+        catch(e){ flash("Error al eliminar el evento"); return; }
+      }
     }
     setEvents(es=>es.filter(e=>e.id!==id));setSheet(null);setExpandedEvt(null);flash("Eliminado");
   };
@@ -2142,7 +2191,7 @@ function MaestroApp({ user, onLogout }){
             <div className="sh-grab"/><div className="sh-head"><span className="sh-h">Conectar cuenta</span><button className="ib" onClick={()=>setSheet("accounts")}>{I.x}</button></div>
             <div className="sh-body">
               <p style={{fontSize:13,color:"var(--t3)",marginBottom:14,lineHeight:1.5}}>Conectá una cuenta para sincronizar calendarios.</p>
-              {PROVIDERS.map(p=>(<div key={p.id} className="prov-c" onClick={()=>{setAccounts(as=>[...as,{id:uid(),provider:p.id,email:`user@${p.id}.com`,name:p.name,on:true,cals:[{id:uid(),name:"Principal",color:"#6366F1",on:true}]}]);setSheet("accounts");flash(`${p.name} conectado`)}}><div className="prov-ic" style={{background:p.bg}}>{p.icon}</div><div><div className="prov-n">{p.name}</div><div className="prov-d">Sincronizar calendarios</div></div></div>))}
+              {PROVIDERS.map(p=>(<div key={p.id} className="prov-c" onClick={()=>{if(p.id==="google"){addGoogleAccount()}else{setAccounts(as=>[...as,{id:uid(),provider:p.id,email:`user@${p.id}.com`,name:p.name,on:true,cals:[{id:uid(),name:"Principal",color:"#6366F1",on:true}]}]);setSheet("accounts");flash(`${p.name} conectado`)}}}><div className="prov-ic" style={{background:p.bg}}>{p.icon}</div><div><div className="prov-n">{p.name}</div><div className="prov-d">{p.id==="google"?"Conectar cuenta real":"Sincronizar calendarios"}</div></div></div>))}
             </div>
           </div>
         )}
