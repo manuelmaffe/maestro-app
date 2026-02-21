@@ -561,6 +561,9 @@ const CSS = () => (
     .tg.on{background:var(--ok)}.tg.off{background:var(--brd)}
     .tg-d{width:16px;height:16px;border-radius:50%;background:white;position:absolute;top:3px;transition:all .2s;box-shadow:0 1px 3px rgba(0,0,0,.15)}
     .tg.on .tg-d{left:19px}.tg.off .tg-d{left:3px}
+    .tg.tg-sm{width:26px;height:14px;border-radius:7px}
+    .tg.tg-sm .tg-d{width:10px;height:10px;top:2px}
+    .tg.tg-sm.on .tg-d{left:14px}.tg.tg-sm.off .tg-d{left:2px}
     .btn-m{width:100%;padding:13px;border-radius:var(--rs);border:none;background:var(--t);color:var(--w);font-size:14px;font-weight:600;font-family:var(--f);cursor:pointer;transition:all .12s}
     .btn-m:hover{opacity:.9}.btn-m:active{transform:scale(.98)}
     .btn-g{width:100%;padding:11px;border-radius:var(--rs);border:1px solid var(--brd);background:var(--w);color:var(--t2);font-size:13px;font-weight:500;font-family:var(--f);cursor:pointer;margin-top:8px;transition:all .12s;display:flex;align-items:center;justify-content:center;gap:6px}
@@ -1387,6 +1390,7 @@ function MaestroApp({ user, onLogout }){
   const [tlPhase,setTlPhase]=useState("idle");
   const [toast,setToast]=useState(null);
   const [form,setForm]=useState({});
+  const [formError,setFormError]=useState("");
   const [userMenu,setUserMenu]=useState(false);
   const [tlView,setTlView]=useState(()=>localStorage.getItem("maestro_tlview")||"3day");
   const tlRef=useRef(null);
@@ -1780,7 +1784,7 @@ function MaestroApp({ user, onLogout }){
 
   const fmtDateInput = d => `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
 
-  const openNew=()=>{setForm({title:"",desc:"",cid:enabledCals[0]||"",date:fmtDateInput(selDate),sh:9,sm:0,eh:10,em:0,allDay:false,loc:"",videoLink:"",addMeet:false,isTask:false,isBooking:false,done:false,priority:null});setTlOpen(false);setTlPhase("idle");setExpandedEvt(null);setSheet("new")};
+  const openNew=()=>{setFormError("");setForm({title:"",desc:"",cid:enabledCals[0]||"",date:fmtDateInput(selDate),sh:9,sm:0,eh:10,em:0,allDay:false,loc:"",videoLink:"",addMeet:false,isTask:false,isBooking:false,done:false,priority:null});setTlOpen(false);setTlPhase("idle");setExpandedEvt(null);setSheet("new")};
   const openNewAt=(hour,min,date)=>{
     const sm=Math.round(min/15)*15;
     const startM=hour*60+(sm>=60?0:sm);
@@ -1792,7 +1796,8 @@ function MaestroApp({ user, onLogout }){
   };
   const openEdit=evt=>{setForm({id:evt.id,title:evt.title,desc:evt.desc||"",cid:evt.cid,date:fmtDateInput(evt.date),sh:evt.sh,sm:evt.sm,eh:evt.eh,em:evt.em,allDay:evt.allDay||false,loc:evt.loc||"",videoLink:evt.videoLink||"",addMeet:!!(evt.videoLink),isTask:evt.isTask||false,done:evt.done||false,priority:evt.priority||null});setExpandedEvt(null);setTlOpen(false);setTlPhase("idle");setSheet("edit")};
   const save=async()=>{
-    if(!form.title.trim())return;
+    if(!form.title.trim()){setFormError("El título es obligatorio");return;}
+    setFormError("");
     const [yr,mn,dy] = form.date.split("-").map(Number);
     const d={title:form.title,desc:form.desc,cid:form.isTask?"maestro-tasks":form.cid,date:new Date(yr,mn-1,dy),sh:+form.sh,sm:+form.sm,eh:+form.eh,em:+form.em,allDay:form.isTask?false:form.allDay,loc:form.isTask?"":form.loc,videoLink:form.isTask?"":form.videoLink,addMeet:!form.isTask&&form.addMeet&&!form.videoLink,isTask:form.isTask,done:form.done,priority:form.isTask?(form.priority||null):null};
     if(d.isTask){
@@ -2355,10 +2360,11 @@ function MaestroApp({ user, onLogout }){
               {/* Title */}
               <div className="fg">
                 <input className="fi" placeholder={form.isTask ? "¿Qué necesitás hacer?" : "Título del evento"} value={form.title}
-                  onChange={e=>setForm(f=>({...f,title:e.target.value}))}
+                  onChange={e=>{setForm(f=>({...f,title:e.target.value}));if(e.target.value.trim())setFormError("");}}
                   autoFocus
-                  style={{fontSize:18,fontWeight:600,border:"none",borderBottom:"1.5px solid var(--brd)",borderRadius:0,padding:"12px 0",letterSpacing:"-0.3px"}}
+                  style={{fontSize:18,fontWeight:600,border:"none",borderBottom:`1.5px solid ${formError?"var(--danger)":"var(--brd)"}`,borderRadius:0,padding:"12px 0",letterSpacing:"-0.3px"}}
                 />
+                {formError&&<div style={{fontSize:12,color:"var(--danger)",marginTop:4,fontWeight:500}}>{formError}</div>}
               </div>
 
               {/* Calendar selector — events only */}
@@ -2373,7 +2379,7 @@ function MaestroApp({ user, onLogout }){
                           className={`cal-opt ${form.cid===c.id?"sel":""}`}
                           onClick={()=>setForm(f=>({...f,cid:c.id}))}
                         >
-                          <div className="cal-opt-prov" style={{background:prov?.bg||"#333"}}>{prov?.icon||a.name[0]}</div>
+                          <div className="cal-opt-prov" style={{background:prov?.logoUrl?"#fff":prov?.bg||"#333",border:prov?.logoUrl?"1px solid #e5e7eb":"none"}}>{prov?.logoUrl?<img src={prov.logoUrl} style={{width:12,height:12}}/>:prov?.icon||a.name[0]}</div>
                           <div className="cal-opt-info">
                             <div className="cal-opt-name">{c.name}</div>
                             <div className="cal-opt-acc">{a.email}</div>
@@ -2478,7 +2484,7 @@ function MaestroApp({ user, onLogout }){
                       ? <a href={form.videoLink} target="_blank" rel="noopener noreferrer" style={{fontSize:11,color:"var(--blue)",textDecoration:"none"}}>{form.videoLink}</a>
                       : <div style={{fontSize:11,color:"var(--t4)"}}>Se generará al guardar</div>}
                   </div>
-                  <button className={`tg ${form.addMeet||form.videoLink?"on":"off"}`}
+                  <button className={`tg tg-sm ${form.addMeet||form.videoLink?"on":"off"}`}
                     disabled={!!form.videoLink}
                     onClick={()=>setForm(f=>({...f,addMeet:!f.addMeet}))}>
                     <div className="tg-d"/>
