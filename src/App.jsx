@@ -1321,6 +1321,29 @@ export default function Maestro(){
   return <MaestroApp user={user} onLogout={handleLogout} />;
 }
 
+function layoutEvents(evts){
+  if(!evts.length) return [];
+  const res=evts.map(e=>({...e,_col:0,_cols:1}));
+  const colEnds=[];
+  for(let i=0;i<res.length;i++){
+    const s=res[i].sh*60+res[i].sm, e=res[i].eh*60+res[i].em;
+    let placed=false;
+    for(let c=0;c<colEnds.length;c++){if(colEnds[c]<=s){res[i]._col=c;colEnds[c]=e;placed=true;break;}}
+    if(!placed){res[i]._col=colEnds.length;colEnds.push(e);}
+  }
+  for(let i=0;i<res.length;i++){
+    const s1=res[i].sh*60+res[i].sm,e1=res[i].eh*60+res[i].em;
+    let maxCol=res[i]._col;
+    for(let j=0;j<res.length;j++){
+      if(i===j)continue;
+      const s2=res[j].sh*60+res[j].sm,e2=res[j].eh*60+res[j].em;
+      if(s1<e2&&e1>s2)maxCol=Math.max(maxCol,res[j]._col);
+    }
+    res[i]._cols=maxCol+1;
+  }
+  return res;
+}
+
 function MaestroApp({ user, onLogout }){
   // Restaurar cuentas secundarias desde localStorage (la primaria la recrea syncCalendars)
   const [accounts,setAccounts]=useState(()=>{
@@ -1720,13 +1743,13 @@ function MaestroApp({ user, onLogout }){
   const fmtDateInput = d => `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
 
   const openNew=()=>{setForm({title:"",desc:"",cid:enabledCals[0]||"",date:fmtDateInput(selDate),sh:9,sm:0,eh:10,em:0,allDay:false,loc:"",videoLink:"",isTask:false,isBooking:false,done:false,priority:null});setTlOpen(false);setTlPhase("idle");setExpandedEvt(null);setSheet("new")};
-  const openNewAt=(hour,min)=>{
+  const openNewAt=(hour,min,date)=>{
     const sm=Math.round(min/15)*15;
     const startM=hour*60+(sm>=60?0:sm);
     const sh2=Math.floor(startM/60), sm2=startM%60;
     const endM=Math.min(24*60-1, startM+60);
     const eh2=Math.floor(endM/60), em2=endM%60;
-    setForm({title:"",desc:"",cid:enabledCals[0]||"",date:fmtDateInput(selDate),sh:sh2,sm:sm2,eh:eh2,em:em2,allDay:false,loc:"",videoLink:"",isTask:false,isBooking:false,done:false,priority:null});
+    setForm({title:"",desc:"",cid:enabledCals[0]||"",date:fmtDateInput(date||selDate),sh:sh2,sm:sm2,eh:eh2,em:em2,allDay:false,loc:"",videoLink:"",isTask:false,isBooking:false,done:false,priority:null});
     setTlOpen(false);setTlPhase("idle");setExpandedEvt(null);setSheet("new");
   };
   const openEdit=evt=>{setForm({id:evt.id,title:evt.title,desc:evt.desc||"",cid:evt.cid,date:fmtDateInput(evt.date),sh:evt.sh,sm:evt.sm,eh:evt.eh,em:evt.em,allDay:evt.allDay||false,loc:evt.loc||"",videoLink:evt.videoLink||"",isTask:evt.isTask||false,done:evt.done||false,priority:evt.priority||null});setExpandedEvt(null);setTlOpen(false);setTlPhase("idle");setSheet("edit")};
@@ -1979,7 +2002,7 @@ function MaestroApp({ user, onLogout }){
                         setSelDate(new Date(d));
                         const rect=e.currentTarget.getBoundingClientRect();
                         const min=Math.round(((e.clientY-rect.top)/PX_H)*60);
-                        openNewAt(h,min);
+                        openNewAt(h,min,d);
                       }}/>
                   ))}
 
@@ -1991,14 +2014,18 @@ function MaestroApp({ user, onLogout }){
                   )}
 
                   {/* Events */}
-                  {dayEvtsForCol.map(evt => {
+                  {layoutEvents(dayEvtsForCol).map(evt => {
                     const cal=getCal(evt.cid);
                     const evtColor=evt.isTask?"#6366F1":(cal?.color||"#ccc");
                     const topPx=((evt.sh-TL_FIRST_HOUR)*60+evt.sm)/60*PX_H;
                     const h2=Math.max(20,((evt.eh*60+evt.em)-(evt.sh*60+evt.sm))/60*PX_H);
+                    const leftPct=evt._col/evt._cols;
+                    const widthPct=1/evt._cols;
                     return (
                       <div key={evt.id} className="tl-evt"
-                        style={{position:"absolute",top:topPx,height:h2,left:2,right:4,
+                        style={{position:"absolute",top:topPx,height:h2,
+                          left:`calc(${leftPct*100}% + 2px)`,
+                          width:`calc(${widthPct*100}% - 6px)`,
                           borderLeftColor:evtColor,background:`${evtColor}18`,zIndex:2}}
                         onClick={()=>setExpandedEvt(evt)}>
                         <div className="tl-evt-title">{evt.title}</div>
