@@ -2,6 +2,8 @@ import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { useGoogleLogin } from "@react-oauth/google";
 import { fetchUserInfo, fetchCalendars, fetchEvents, mapGoogleCalendar, mapGoogleEvent, createEvent, updateEvent, deleteEvent } from "./googleCalendar.js";
 import { supabase } from "./supabase.js";
+import Toggle from "react-toggle";
+import "react-toggle/style.css";
 
 const DAYS_SHORT = ["L","M","X","J","V","S","D"];
 const MONTHS = ["Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"];
@@ -1044,7 +1046,7 @@ function BookingBuilder({ events, accounts, enabledCals, user, onFlash, onClose 
       <div className="fg">
         <label className="fl">{I.video} Videoconferencia</label>
         <div className="bk-opt" onClick={()=>{setBk(b=>({...b,addVideo:!b.addVideo}));setGenerated(null)}}>
-          <button className={`tg ${bk.addVideo?"on":"off"}`} type="button"><div className="tg-d"/></button>
+          <Toggle checked={bk.addVideo} onChange={e=>{setBk(b=>({...b,addVideo:e.target.checked}));setGenerated(null)}} icons={false}/>
           <div>
             <div style={{fontSize:13,fontWeight:500}}>Agregar videoconferencia</div>
             <div style={{fontSize:11,color:"var(--t3)"}}>
@@ -2413,10 +2415,10 @@ function MaestroApp({ user, onLogout }){
                   style={{marginBottom:10}}
                 />
                 {!form.isTask && (
-                  <div className="tg-row" onClick={()=>setForm(f=>({...f,allDay:!f.allDay}))} style={{marginTop:0}}>
-                    <button className={`tg ${form.allDay?"on":"off"}`} type="button"><div className="tg-d"/></button>
+                  <label className="tg-row" style={{marginTop:0,cursor:"pointer"}}>
+                    <Toggle checked={form.allDay} onChange={e=>setForm(f=>({...f,allDay:e.target.checked}))} icons={false}/>
                     <span style={{fontSize:13,fontWeight:500,color:"var(--t2)"}}>Todo el día</span>
-                  </div>
+                  </label>
                 )}
               </div>
 
@@ -2484,11 +2486,8 @@ function MaestroApp({ user, onLogout }){
                       ? <a href={form.videoLink} target="_blank" rel="noopener noreferrer" style={{fontSize:11,color:"var(--blue)",textDecoration:"none"}}>{form.videoLink}</a>
                       : <div style={{fontSize:11,color:"var(--t4)"}}>Se generará al guardar</div>}
                   </div>
-                  <button className={`tg tg-sm ${form.addMeet||form.videoLink?"on":"off"}`}
-                    disabled={!!form.videoLink}
-                    onClick={()=>setForm(f=>({...f,addMeet:!f.addMeet}))}>
-                    <div className="tg-d"/>
-                  </button>
+                  <Toggle checked={!!(form.addMeet||form.videoLink)} disabled={!!form.videoLink}
+                    onChange={e=>setForm(f=>({...f,addMeet:e.target.checked}))} icons={false}/>
                 </div>
               )}
 
@@ -2520,7 +2519,7 @@ function MaestroApp({ user, onLogout }){
           <div className="sh">
             <div className="sh-grab"/><div className="sh-head"><span className="sh-h">Cuentas</span><button className="ib" onClick={()=>setSheet(null)}>{I.x}</button></div>
             <div className="sh-body">
-              {accounts.map(acc=>{const prov=PROVIDERS.find(p=>p.id===acc.provider);const isPrimary=acc.id==="g1";return(<div key={acc.id}><div className="acc-i"><div className="acc-av" style={{background:prov?.logoUrl?"#fff":prov?.bg||"#333",border:prov?.logoUrl?"1px solid #e5e7eb":"none"}}>{prov?.logoUrl?<img src={prov.logoUrl} style={{width:20,height:20}}/>:prov?.icon||acc.name[0]}</div><div className="acc-inf"><div className="acc-n">{acc.name}</div><div className="acc-e">{acc.email}</div></div><div style={{display:"flex",alignItems:"center",gap:6}}><button className={`tg ${acc.on?"on":"off"}`} onClick={()=>setAccounts(as=>as.map(a=>a.id===acc.id?{...a,on:!a.on}:a))}><div className="tg-d"/></button>{!isPrimary&&<button className="ib" style={{width:28,height:28,color:"var(--danger)"}} title="Eliminar cuenta" onClick={()=>{setAccounts(as=>as.filter(a=>a.id!==acc.id));setEvents(es=>es.filter(e=>e.isTask||!acc.cals.some(c=>c.id===e.cid)));flash("Cuenta eliminada")}}>{I.trash}</button>}</div></div>{acc.on&&acc.cals.map(cal=>(<div key={cal.id} className="cal-si"><div className="cal-d" style={{background:cal.color}}/><span className="cal-n">{cal.name}</span><button className={`tg ${cal.on?"on":"off"}`} onClick={()=>setAccounts(as=>as.map(a=>a.id===acc.id?{...a,cals:a.cals.map(c=>c.id===cal.id?{...c,on:!c.on}:c)}:a))}><div className="tg-d"/></button></div>))}</div>)})}
+              {accounts.map(acc=>{const prov=PROVIDERS.find(p=>p.id===acc.provider);const isPrimary=acc.id==="g1";return(<div key={acc.id}><div className="acc-i"><div className="acc-av" style={{background:prov?.logoUrl?"#fff":prov?.bg||"#333",border:prov?.logoUrl?"1px solid #e5e7eb":"none"}}>{prov?.logoUrl?<img src={prov.logoUrl} style={{width:20,height:20}}/>:prov?.icon||acc.name[0]}</div><div className="acc-inf"><div className="acc-n">{acc.name}</div><div className="acc-e">{acc.email}</div></div><div style={{display:"flex",alignItems:"center",gap:6}}><Toggle checked={acc.on} onChange={e=>setAccounts(as=>as.map(a=>a.id===acc.id?{...a,on:e.target.checked}:a))} icons={false}/>{!isPrimary&&<button className="ib" style={{width:28,height:28,color:"var(--danger)"}} title="Eliminar cuenta" onClick={()=>{setAccounts(as=>as.filter(a=>a.id!==acc.id));setEvents(es=>es.filter(e=>e.isTask||!acc.cals.some(c=>c.id===e.cid)));flash("Cuenta eliminada")}}>{I.trash}</button>}</div></div>{acc.on&&acc.cals.map(cal=>(<div key={cal.id} className="cal-si"><div className="cal-d" style={{background:cal.color}}/><span className="cal-n">{cal.name}</span><Toggle checked={cal.on} onChange={e=>setAccounts(as=>as.map(a=>a.id===acc.id?{...a,cals:a.cals.map(c=>c.id===cal.id?{...c,on:e.target.checked}:c)}:a))} icons={false}/></div>))}</div>)})}
               <button className="add-ab" onClick={()=>setSheet("addAcc")}><div className="add-ac">{I.plus}</div>Agregar cuenta</button>
             </div>
           </div>
