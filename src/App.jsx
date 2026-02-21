@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { useGoogleLogin } from "@react-oauth/google";
 import { fetchUserInfo, fetchCalendars, fetchEvents, mapGoogleCalendar, mapGoogleEvent, createEvent, updateEvent, deleteEvent } from "./googleCalendar.js";
+import { supabase } from "./supabase.js";
 
 const DAYS_SHORT = ["L","M","X","J","V","S","D"];
 const MONTHS = ["Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"];
@@ -1152,29 +1153,21 @@ function AuthScreen({ onLogin }) {
     setTimeout(() => { setLoading(false); onLogin({ email: `user@${provider}.com`, name: "Manu" }); }, 800);
   };
 
-  const googleLogin = useGoogleLogin({
-    onSuccess: async (tokenResponse) => {
-      setLoading(true);
-      try {
-        const userInfo = await fetchUserInfo(tokenResponse.access_token);
-        onLogin({
-          email: userInfo.email,
-          name: userInfo.name,
-          picture: userInfo.picture,
-          accessToken: tokenResponse.access_token,
-        });
-      } catch (e) {
-        setError("Error al conectar con Google. Intentá de nuevo.");
-        setLoading(false);
-      }
-    },
-    onError: () => {
+  const googleLogin = async () => {
+    setLoading(true);
+    try {
+      await supabase.auth.signInWithOAuth({
+        provider: "google",
+        options: {
+          scopes: "https://www.googleapis.com/auth/calendar email profile",
+          redirectTo: window.location.origin,
+        },
+      });
+    } catch {
       setError("Error al conectar con Google. Intentá de nuevo.");
       setLoading(false);
-    },
-    scope: "https://www.googleapis.com/auth/calendar email profile",
-    flow: "implicit",
-  });
+    }
+  };
 
   return (
     <div className="auth-wrap">
@@ -1188,7 +1181,7 @@ function AuthScreen({ onLogin }) {
 
         {/* Provider buttons */}
         <div className="auth-providers">
-          <button className="auth-prov-btn" onClick={() => googleLogin()} disabled={loading}>
+          <button className="auth-prov-btn" onClick={googleLogin} disabled={loading}>
             <span className="auth-prov-icon" style={{background:"#EA4335"}}>G</span>
             <span>Continuar con Google</span>
           </button>
@@ -1262,25 +1255,84 @@ function AuthScreen({ onLogin }) {
 }
 
 // ── Main ──
+function sessionToUser(session) {
+  return {
+    name: session.user.user_metadata?.full_name || session.user.email,
+    email: session.user.email,
+    picture: session.user.user_metadata?.avatar_url,
+    accessToken: session.provider_token,
+  };
+}
+
 export default function Maestro(){
   const [authed, setAuthed] = useState(false);
   const [user, setUser] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    // Restaurar sesión al cargar
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session?.provider_token) {
+        setUser(sessionToUser(session));
+        setAuthed(true);
+      }
+      setLoading(false);
+    });
+    // Escuchar cambios de sesión (login, logout, token refresh)
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (session?.provider_token) {
+        setUser(sessionToUser(session));
+        setAuthed(true);
+      } else {
+        setAuthed(false);
+        setUser(null);
+      }
+    });
+    return () => subscription.unsubscribe();
+  }, []);
+
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+    localStorage.removeItem("maestro_tasks");
+    localStorage.removeItem("maestro_secondary_accounts");
+  };
+
+  if (loading) {
+    return (
+      <>
+        <CSS />
+        <div style={{display:"flex",alignItems:"center",justifyContent:"center",height:"100dvh",background:"var(--bg)"}}>
+          <div style={{fontSize:13,color:"var(--t3)",fontFamily:"var(--f)"}}>Cargando...</div>
+        </div>
+      </>
+    );
+  }
 
   if (!authed) {
     return (
       <>
         <CSS />
-        <AuthScreen onLogin={(u) => { setUser(u); setAuthed(true); }} />
+        <AuthScreen onLogin={() => {}} />
       </>
     );
   }
 
-  return <MaestroApp user={user} onLogout={() => { setAuthed(false); setUser(null); }} />;
+  return <MaestroApp user={user} onLogout={handleLogout} />;
 }
 
 function MaestroApp({ user, onLogout }){
-  const [accounts,setAccounts]=useState([]);
-  const [events,setEvents]=useState([]);
+  // Restaurar cuentas secundarias desde localStorage (la primaria la recrea syncCalendars)
+  const [accounts,setAccounts]=useState(()=>{
+    try{ return JSON.parse(localStorage.getItem("maestro_secondary_accounts")||"[]"); }
+    catch{ return []; }
+  });
+  // Restaurar tareas locales desde localStorage
+  const [events,setEvents]=useState(()=>{
+    try{
+      return JSON.parse(localStorage.getItem("maestro_tasks")||"[]")
+        .map(t=>({...t,date:new Date(t.date)}));
+    }catch{ return []; }
+  });
   const [calLoading,setCalLoading]=useState(false);
   const [selDate,setSelDate]=useState(new Date());
   const [vM,setVM]=useState(MO);
@@ -1331,6 +1383,18 @@ function MaestroApp({ user, onLogout }){
     events.filter(e=>same(e.date,date)&&(e.isTask||enabledCals.includes(e.cid)))
       .sort((a,b)=>(a.sh*60+a.sm)-(b.sh*60+b.sm)),
   [events,enabledCals]);;
+
+  // Persistir tareas locales
+  useEffect(()=>{
+    try{ localStorage.setItem("maestro_tasks",JSON.stringify(events.filter(e=>e.isTask))); }
+    catch{}
+  },[events]);
+
+  // Persistir cuentas secundarias (excluir la primaria g1 que se recrea en cada sync)
+  useEffect(()=>{
+    try{ localStorage.setItem("maestro_secondary_accounts",JSON.stringify(accounts.filter(a=>a.id!=="g1"))); }
+    catch{}
+  },[accounts]);
 
   const flash=msg=>{setToast(msg);setTimeout(()=>setToast(null),2200)};
 
@@ -1389,27 +1453,31 @@ function MaestroApp({ user, onLogout }){
   const openTl=()=>{setTlOpen(true);setTlPhase("entering");setTimeout(()=>setTlPhase("idle"),350)};
   const closeTl=useCallback(()=>{setTlPhase("dismissing");setTimeout(()=>{setTlOpen(false);setTlPhase("idle")},300)},[]);
 
-  // Sync calendars — reusable for initial load and manual refresh
+  // Sync calendars — obtiene token fresco de Supabase en cada llamada
   const syncCalendars=useCallback(async()=>{
-    if(!user?.accessToken) return;
     setCalLoading(true);
     try {
-      const cals = await fetchCalendars(user.accessToken);
+      // Token siempre fresco desde Supabase (maneja el refresh automáticamente)
+      const { data: { session } } = await supabase.auth.getSession();
+      const token = session?.provider_token;
+      if(!token){ flash("Sesión vencida. Recargá la página."); return; }
+      const userEmail = session.user.email;
+      const userName = session.user.user_metadata?.full_name || userEmail;
+
+      const cals = await fetchCalendars(token);
       setAccounts(as=>{
-        // Preserve any extra accounts (multi-cuenta) and update the primary
         const others=as.filter(a=>a.id!=="g1");
-        return [{id:"g1",provider:"google",email:user.email,name:user.name||"Google",on:true,accessToken:user.accessToken,cals:cals.map(mapGoogleCalendar)},...others];
+        return [{id:"g1",provider:"google",email:userEmail,name:userName,on:true,accessToken:token,cals:cals.map(mapGoogleCalendar)},...others];
       });
       const timeMin = new Date(); timeMin.setDate(timeMin.getDate()-30); timeMin.setHours(0,0,0,0);
       const timeMax = new Date(); timeMax.setDate(timeMax.getDate()+90);
       const allEvents = [];
       for (const cal of cals) {
         try {
-          const evts = await fetchEvents(user.accessToken, cal.id, timeMin.toISOString(), timeMax.toISOString());
+          const evts = await fetchEvents(token, cal.id, timeMin.toISOString(), timeMax.toISOString());
           allEvents.push(...evts.map(e => mapGoogleEvent(e, cal.id)));
         } catch(_) {}
       }
-      // Keep local tasks, replace calendar events
       setEvents(es=>[...es.filter(e=>e.isTask),...allEvents]);
       flash("Calendarios actualizados");
     } catch(e) {
@@ -1418,10 +1486,10 @@ function MaestroApp({ user, onLogout }){
     } finally {
       setCalLoading(false);
     }
-  },[user?.accessToken]);
+  },[]);
 
-  // Load on login
-  useEffect(()=>{ syncCalendars(); },[user?.accessToken]);
+  // Load on mount
+  useEffect(()=>{ syncCalendars(); },[]);
 
   // Scroll to now when timeline opens
   useEffect(()=>{
