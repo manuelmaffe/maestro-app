@@ -2330,12 +2330,11 @@ function MaestroApp({ user, onLogout }){
     try{
       const {data:{session}}=await supabase.auth.getSession();
       if(!session?.access_token){flash("Sesión expirada, recargá la página");setSuggestLoading(false);setSuggestSheet(false);return;}
-      const res=await fetch(`${SUPABASE_URL}/functions/v1/suggest-todos`,{
+      const res=await fetch(`/api/suggest-todos`,{
         method:"POST",
         headers:{
           "Content-Type":"application/json",
           "Authorization":`Bearer ${session.access_token}`,
-          "apikey":SUPABASE_ANON_KEY,
         },
         body:JSON.stringify({todos:pending,freeSlots,today:today_str,timezone:tz}),
       });
