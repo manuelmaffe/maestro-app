@@ -2330,11 +2330,17 @@ function MaestroApp({ user, onLogout }){
     try{
       const {data:{session}}=await supabase.auth.getSession();
       if(!session?.access_token){flash("Sesión expirada, recargá la página");setSuggestLoading(false);setSuggestSheet(false);return;}
-      const {data,error:fnErr}=await supabase.functions.invoke("suggest-todos",{
-        body:{todos:pending,freeSlots,today:today_str,timezone:tz},
-        headers:{Authorization:`Bearer ${session.access_token}`},
+      const res=await fetch(`${SUPABASE_URL}/functions/v1/suggest-todos`,{
+        method:"POST",
+        headers:{
+          "Content-Type":"application/json",
+          "Authorization":`Bearer ${session.access_token}`,
+          "apikey":SUPABASE_ANON_KEY,
+        },
+        body:JSON.stringify({todos:pending,freeSlots,today:today_str,timezone:tz}),
       });
-      if(fnErr) throw fnErr;
+      if(!res.ok) throw new Error(await res.text());
+      const data=await res.json();
       setSuggestions(data?.suggestions||[]);
     }catch(e){
       flash("Error al obtener sugerencias");
