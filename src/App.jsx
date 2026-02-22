@@ -711,6 +711,60 @@ const CSS = () => (
     .evt-sh-att-name{font-size:12px;font-weight:600;color:var(--t);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
     .evt-sh-att-email{font-size:11px;color:var(--t3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 
+    /* ── Sidebar booking links ── */
+    .bk-sidebar-section{border-top:1px solid var(--bl);padding:4px 0}
+    .bk-sidebar-hdr{display:flex;align-items:center;gap:6px;width:100%;background:none;border:none;cursor:pointer;padding:8px 16px;font-family:var(--fm);color:var(--t2)}
+    .bk-sidebar-hdr-icon{font-size:10px;color:var(--t4);flex-shrink:0}
+    .bk-sidebar-hdr-label{flex:1;font-size:12px;font-weight:600;text-align:left}
+    .bk-sidebar-add{background:none;border:none;cursor:pointer;color:var(--t3);padding:2px 4px;border-radius:4px;line-height:1;display:flex;align-items:center}
+    .bk-sidebar-add:hover{color:var(--t);background:var(--hover)}
+    .bk-sidebar-list{padding:0 8px 8px}
+    .bk-sidebar-empty{font-size:11px;color:var(--t4);padding:8px 8px;font-family:var(--fm)}
+    .bk-sidebar-item{display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:8px;cursor:default}
+    .bk-sidebar-item:hover{background:var(--hover)}
+    .bk-sidebar-dot{width:8px;height:8px;border-radius:50%;background:var(--blue);flex-shrink:0}
+    .bk-sidebar-info{flex:1;min-width:0}
+    .bk-sidebar-name{font-size:12px;font-weight:600;color:var(--t);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-family:var(--fm)}
+    .bk-sidebar-meta{font-size:10px;color:var(--t3);font-family:var(--fm)}
+    .bk-sidebar-copy,.bk-sidebar-del{background:none;border:none;cursor:pointer;color:var(--t4);padding:4px;border-radius:4px;display:flex;align-items:center;opacity:0}
+    .bk-sidebar-item:hover .bk-sidebar-copy,.bk-sidebar-item:hover .bk-sidebar-del{opacity:1}
+    .bk-sidebar-del:hover{color:var(--danger)}
+    .bk-sidebar-copy:hover{color:var(--t)}
+
+    /* ── Public booking page ── */
+    .bk-page{min-height:100vh;background:#f8fafc;font-family:var(--fm)}
+    .bk-page-header{background:var(--w);border-bottom:1px solid var(--bl);padding:16px 24px;display:flex;align-items:center;gap:12px}
+    .bk-page-brand{font-size:14px;font-weight:700;color:var(--t);letter-spacing:-.3px}
+    .bk-page-body{max-width:860px;margin:0 auto;padding:32px 16px;display:grid;grid-template-columns:280px 1fr;gap:24px}
+    @media(max-width:600px){.bk-page-body{grid-template-columns:1fr;padding:16px}}
+    .bk-page-info{background:var(--w);border-radius:12px;border:1px solid var(--bl);padding:24px}
+    .bk-page-host{display:flex;align-items:center;gap:12px;margin-bottom:20px}
+    .bk-page-av{width:44px;height:44px;border-radius:50%;background:var(--t);color:var(--w);display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:700}
+    .bk-page-meta{font-size:12px;color:var(--t3);margin-top:4px;display:flex;flex-direction:column;gap:4px}
+    .bk-page-right{display:flex;flex-direction:column;gap:16px}
+    .bk-cal-nav{display:flex;align-items:center;gap:8px;margin-bottom:12px}
+    .bk-cal-nav-title{flex:1;font-size:14px;font-weight:700;color:var(--t)}
+    .bk-cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:2px}
+    .bk-cal-dh{font-size:10px;font-weight:600;color:var(--t3);text-align:center;padding:4px 0}
+    .bk-cal-day{aspect-ratio:1;display:flex;align-items:center;justify-content:center;border-radius:6px;font-size:13px;font-weight:500;color:var(--t2);cursor:default}
+    .bk-cal-day.avail{cursor:pointer;color:var(--t);font-weight:600}
+    .bk-cal-day.avail:hover{background:var(--hover)}
+    .bk-cal-day.sel{background:var(--t);color:var(--w)}
+    .bk-cal-day.oth{color:var(--t4)}
+    .bk-slots-panel{background:var(--w);border-radius:12px;border:1px solid var(--bl);padding:20px}
+    .bk-slots-date{font-size:14px;font-weight:700;color:var(--t);margin-bottom:14px;text-transform:capitalize}
+    .bk-slots-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(90px,1fr));gap:8px}
+    .bk-slot-btn{padding:10px;border-radius:8px;border:1.5px solid var(--brd);background:var(--w);font-size:13px;font-weight:600;color:var(--t);cursor:pointer;font-family:var(--fm);transition:all .1s}
+    .bk-slot-btn:hover{border-color:var(--t);background:var(--hover)}
+    .bk-slot-btn.sel{background:var(--t);color:var(--w);border-color:var(--t)}
+    .bk-slot-btn:disabled{opacity:.35;cursor:not-allowed}
+    .bk-confirm-panel{background:var(--w);border-radius:12px;border:1px solid var(--bl);padding:20px;display:flex;flex-direction:column;gap:12px}
+    .bk-confirm-slot{font-size:13px;font-weight:600;color:var(--t);background:var(--hover);padding:10px 14px;border-radius:8px;margin-bottom:4px}
+    .bk-done-panel{background:var(--w);border-radius:12px;border:1px solid var(--bl);padding:32px;text-align:center}
+    .bk-done-icon{font-size:40px;margin-bottom:12px}
+    .bk-done-title{font-size:20px;font-weight:700;color:var(--t);margin-bottom:6px}
+    .bk-done-sub{font-size:13px;color:var(--t3);margin-bottom:20px}
+
     .auth-submit{
       width:100%;padding:14px;border-radius:var(--r);border:none;
       background:var(--t);color:var(--w);font-size:15px;font-weight:600;
@@ -890,8 +944,312 @@ function EventDetail({evt,cal,onClose,onEdit,onDelete,onToggleDone}){
   );
 }
 
+// ── Public Booking Page ──────────────────────────────────────────────────────
+function BookingPage({ linkId }) {
+  const [link, setLink] = useState(null);
+  const [takenSlots, setTakenSlots] = useState([]);
+  const [selDate, setSelDate] = useState(null);
+  const [selSlot, setSelSlot] = useState(null);
+  const [step, setStep] = useState("cal"); // "cal" | "form" | "done"
+  const [form, setForm] = useState({ name: "", email: "" });
+  const [loading, setLoading] = useState(true);
+  const [booking, setBooking] = useState(false);
+  const [result, setResult] = useState(null);
+  const [pageError, setPageError] = useState("");
+  const [formErr, setFormErr] = useState("");
+  const [vM, setVM] = useState(new Date().getMonth());
+  const [vY, setVY] = useState(new Date().getFullYear());
+
+  const DAYS_SHORT = ["Lun","Mar","Mié","Jue","Vie","Sáb","Dom"];
+  const MONTHS_ES = ["Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"];
+
+  useEffect(() => {
+    const load = async () => {
+      const { data, error } = await supabase.rpc("get_booking_link_public", { p_id: linkId });
+      if (error || !data) { setPageError("Link no encontrado o expirado."); setLoading(false); return; }
+      setLink(data);
+      // Fetch confirmed bookings (to exclude taken slots)
+      const { data: bks } = await supabase
+        .from("booking_requests")
+        .select("slot_date,slot_sh,slot_sm")
+        .eq("link_id", linkId)
+        .eq("status", "confirmed");
+      setTakenSlots(bks || []);
+      // Set initial date to date_from or today
+      const from = new Date(data.date_from + "T00:00:00");
+      const initial = from > new Date() ? from : new Date();
+      initial.setHours(0,0,0,0);
+      setSelDate(initial);
+      setVM(initial.getMonth()); setVY(initial.getFullYear());
+      setLoading(false);
+    };
+    load();
+  }, [linkId]);
+
+  // Build available slots for a given date
+  const getSlotsForDate = (date) => {
+    if (!link) return [];
+    const dateStr = date.toISOString().split("T")[0];
+    const dateFrom = new Date(link.date_from + "T00:00:00");
+    const dateTo = new Date(link.date_to + "T23:59:59");
+    dateFrom.setHours(0,0,0,0);
+    if (date < dateFrom || date > dateTo) return [];
+    const dow = date.getDay() === 0 ? 7 : date.getDay(); // 1=Mon..7=Sun
+    if (!link.weekdays.includes(dow === 7 ? 0 : dow)) return [];
+
+    // Busy blocks from snapshot + taken slots from bookings
+    const busy = [
+      ...(link.busy_blocks || []).filter(b => b.date === dateStr).map(b => ({ s: b.sh*60+b.sm, e: b.eh*60+b.em })),
+      ...takenSlots.filter(b => b.slot_date === dateStr).map(b => ({ s: b.slot_sh*60+b.slot_sm, e: b.slot_sh*60+b.slot_sm+link.duration })),
+    ].sort((a,b) => a.s - b.s);
+
+    const slots = [];
+    let cursor = link.hour_start * 60;
+    const endOfDay = link.hour_end * 60;
+    for (const evt of busy) {
+      const evtStart = evt.s - link.buffer;
+      const evtEnd = evt.e + link.buffer;
+      while (cursor + link.duration <= Math.min(evtStart, endOfDay)) {
+        slots.push({ sh: Math.floor(cursor/60), sm: cursor%60 });
+        cursor += link.duration + link.buffer;
+      }
+      cursor = Math.max(cursor, evtEnd);
+    }
+    while (cursor + link.duration <= endOfDay) {
+      slots.push({ sh: Math.floor(cursor/60), sm: cursor%60 });
+      cursor += link.duration + link.buffer;
+    }
+    if (link.max_per_day > 0) return slots.slice(0, link.max_per_day);
+    return slots;
+  };
+
+  // Build calendar cells for current month
+  const calCells = useMemo(() => {
+    if (!link) return [];
+    const cells = [];
+    const firstDow = new Date(vY, vM, 1).getDay(); // 0=Sun
+    const firstMon = firstDow === 0 ? 6 : firstDow - 1; // shift to Mon-start
+    const dim = new Date(vY, vM+1, 0).getDate();
+    const prevDim = new Date(vY, vM, 0).getDate();
+    for (let i = firstMon-1; i >= 0; i--) {
+      const d = new Date(vY, vM-1 === -1 ? 11 : vM-1, prevDim-i);
+      cells.push({ date: d, oth: true });
+    }
+    for (let i = 1; i <= dim; i++) cells.push({ date: new Date(vY, vM, i), oth: false });
+    while (cells.length < 42) {
+      const n = cells.length - firstMon - dim + 1;
+      cells.push({ date: new Date(vY, vM+1 === 12 ? 0 : vM+1, n), oth: true });
+    }
+    return cells;
+  }, [vM, vY, link]);
+
+  const dateHasSlots = (date) => {
+    if (!link) return false;
+    return getSlotsForDate(date).length > 0;
+  };
+
+  const selSlots = selDate ? getSlotsForDate(selDate) : [];
+  const pad2 = (n) => String(n).padStart(2, "0");
+  const fmtTime = (sh, sm) => `${pad2(sh)}:${pad2(sm)}`;
+  const fmtDate = (d) => d ? d.toLocaleDateString("es-AR",{weekday:"long",day:"numeric",month:"long"}) : "";
+
+  const handleConfirm = async () => {
+    if (!form.name.trim()) { setFormErr("Ingresá tu nombre"); return; }
+    if (!form.email.trim() || !form.email.includes("@")) { setFormErr("Ingresá un email válido"); return; }
+    setFormErr(""); setBooking(true);
+    try {
+      const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/book-slot`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "apikey": import.meta.env.VITE_SUPABASE_ANON_KEY,
+          "Authorization": `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+        },
+        body: JSON.stringify({
+          link_id: linkId,
+          guest_name: form.name.trim(),
+          guest_email: form.email.trim(),
+          slot_date: selDate.toISOString().split("T")[0],
+          slot_sh: selSlot.sh,
+          slot_sm: selSlot.sm,
+        }),
+      });
+      const data = await res.json();
+      if (!data.ok) {
+        if (data.error === "SLOT_TAKEN") setFormErr("Este horario ya fue reservado. Elegí otro.");
+        else setFormErr("Error al confirmar: " + data.error);
+        setBooking(false); return;
+      }
+      setResult(data);
+      setStep("done");
+      // Refresh taken slots
+      const endMin = selSlot.sh*60 + selSlot.sm + (link?.duration || 30);
+      setTakenSlots(ts => [...ts, { slot_date: selDate.toISOString().split("T")[0], slot_sh: selSlot.sh, slot_sm: selSlot.sm }]);
+    } catch(e) {
+      setFormErr("Error de conexión. Intentá de nuevo.");
+    }
+    setBooking(false);
+  };
+
+  if (loading) {
+    return (
+      <div className="bk-page" style={{display:"flex",alignItems:"center",justifyContent:"center"}}>
+        <CSS />
+        <div style={{fontSize:14,color:"#6b7280",fontFamily:"sans-serif"}}>Cargando...</div>
+      </div>
+    );
+  }
+  if (pageError || !link) {
+    return (
+      <div className="bk-page" style={{display:"flex",alignItems:"center",justifyContent:"center"}}>
+        <CSS />
+        <div style={{textAlign:"center"}}>
+          <div style={{fontSize:32,marginBottom:12}}>🗓</div>
+          <div style={{fontSize:16,fontWeight:700,color:"#111",marginBottom:8}}>Link no encontrado</div>
+          <div style={{fontSize:13,color:"#6b7280"}}>{pageError || "Este link de agendamiento no existe o expiró."}</div>
+        </div>
+      </div>
+    );
+  }
+
+  const endMin = selSlot ? selSlot.sh*60+selSlot.sm+(link.duration||30) : 0;
+  const endH = Math.floor(endMin/60), endM = endMin%60;
+
+  return (
+    <div className="bk-page">
+      <CSS />
+      {/* Header */}
+      <div className="bk-page-header">
+        <span style={{fontSize:18}}>🗓</span>
+        <span className="bk-page-brand">Maestro</span>
+      </div>
+
+      {step === "done" ? (
+        <div style={{maxWidth:480,margin:"40px auto",padding:"0 16px"}}>
+          <div className="bk-done-panel">
+            <div className="bk-done-icon">✅</div>
+            <div className="bk-done-title">¡Reserva confirmada!</div>
+            <div className="bk-done-sub">
+              Se agendó <strong>{link.title}</strong> el{" "}
+              <strong style={{textTransform:"capitalize"}}>{fmtDate(selDate)}</strong>{" "}
+              de <strong>{fmtTime(selSlot.sh,selSlot.sm)}</strong> a{" "}
+              <strong>{fmtTime(endH,endM)}</strong>.
+              <br/>Un evento fue creado en el calendario del organizador y te enviaron una invitación a <strong>{form.email}</strong>.
+            </div>
+            {result?.meetLink && (
+              <a href={result.meetLink} target="_blank" rel="noopener noreferrer"
+                style={{display:"inline-flex",alignItems:"center",gap:8,padding:"10px 20px",background:"#1a73e8",color:"#fff",borderRadius:8,textDecoration:"none",fontWeight:600,fontSize:14}}>
+                📹 Unirse a Google Meet
+              </a>
+            )}
+          </div>
+        </div>
+      ) : (
+        <div className="bk-page-body">
+          {/* Left: host info + nav (desktop) or just title+slots (mobile) */}
+          <div className="bk-page-info">
+            <div className="bk-page-host">
+              <div className="bk-page-av">{(link.user_slug||"M")[0].toUpperCase()}</div>
+              <div>
+                <div style={{fontSize:14,fontWeight:700,color:"#111"}}>{link.user_slug?.replace(/-/g," ")}</div>
+              </div>
+            </div>
+            <div style={{fontSize:18,fontWeight:700,color:"#111",marginBottom:16}}>{link.title}</div>
+            <div className="bk-page-meta">
+              <span>⏱ {link.duration} min</span>
+              {link.add_video && <span>📹 Google Meet</span>}
+            </div>
+
+            {step === "form" && selSlot && (
+              <div style={{marginTop:20}}>
+                <div className="bk-confirm-slot">
+                  📅 {fmtDate(selDate)}<br/>
+                  🕐 {fmtTime(selSlot.sh,selSlot.sm)} – {fmtTime(endH,endM)}
+                </div>
+                <div className="bk-confirm-panel">
+                  <div className="fg">
+                    <label className="fl">Tu nombre *</label>
+                    <input className="fi" placeholder="Juan García" value={form.name}
+                      onChange={e=>setForm(f=>({...f,name:e.target.value}))}/>
+                  </div>
+                  <div className="fg">
+                    <label className="fl">Tu email *</label>
+                    <input className="fi" type="email" placeholder="juan@ejemplo.com" value={form.email}
+                      onChange={e=>setForm(f=>({...f,email:e.target.value}))}/>
+                  </div>
+                  {formErr && <div style={{color:"var(--danger)",fontSize:12,fontFamily:"var(--fm)"}}>{formErr}</div>}
+                  <button className="btn-m" onClick={handleConfirm} disabled={booking} style={{marginTop:4}}>
+                    {booking ? "Confirmando..." : "Confirmar reserva"}
+                  </button>
+                  <button className="btn-g" onClick={()=>{setStep("cal");setSelSlot(null);setFormErr("")}} style={{marginTop:0}}>
+                    ← Volver
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Right: calendar + slots */}
+          {step === "cal" && (
+            <div className="bk-page-right">
+              {/* Month nav */}
+              <div className="bk-slots-panel">
+                <div className="bk-cal-nav">
+                  <button className="tl-nav-btn" onClick={()=>{ if(vM===0){setVM(11);setVY(y=>y-1)}else setVM(m=>m-1) }}>‹</button>
+                  <span className="bk-cal-nav-title">{MONTHS_ES[vM]} {vY}</span>
+                  <button className="tl-nav-btn" onClick={()=>{ if(vM===11){setVM(0);setVY(y=>y+1)}else setVM(m=>m+1) }}>›</button>
+                </div>
+                {/* Day headers Mon-Sun */}
+                <div className="bk-cal-grid">
+                  {DAYS_SHORT.map(d => <div key={d} className="bk-cal-dh">{d}</div>)}
+                  {calCells.map((c,i) => {
+                    const today = new Date(); today.setHours(0,0,0,0);
+                    const isPast = c.date < today;
+                    const hasSlots = !c.oth && !isPast && dateHasSlots(c.date);
+                    const isSel = selDate && same(c.date, selDate);
+                    return (
+                      <div key={i}
+                        className={`bk-cal-day${c.oth||isPast?"":" "}${hasSlots?" avail":""}${isSel?" sel":""}`}
+                        style={{opacity: c.oth||isPast ? 0.3 : 1}}
+                        onClick={() => { if(hasSlots){ setSelDate(new Date(c.date)); setSelSlot(null); } }}>
+                        {c.date.getDate()}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Time slots for selected date */}
+              {selDate && (
+                <div className="bk-slots-panel">
+                  <div className="bk-slots-date">{fmtDate(selDate)}</div>
+                  {selSlots.length === 0 ? (
+                    <div style={{fontSize:13,color:"#9ca3af",padding:"8px 0"}}>Sin disponibilidad este día</div>
+                  ) : (
+                    <div className="bk-slots-grid">
+                      {selSlots.map((s,i) => {
+                        const isSel = selSlot && s.sh===selSlot.sh && s.sm===selSlot.sm;
+                        return (
+                          <button key={i} className={`bk-slot-btn${isSel?" sel":""}`}
+                            onClick={() => { setSelSlot(s); setStep("form"); setFormErr(""); }}>
+                            {fmtTime(s.sh,s.sm)}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── Booking Link Builder ──
-function BookingBuilder({ events, accounts, enabledCals, user, onFlash, onClose }) {
+function BookingBuilder({ events, accounts, enabledCals, user, onFlash, onClose, onLinkCreated }) {
   const [bk, setBk] = useState({
     title: "Reunión con " + (user?.name || ""),
     duration: 30,
@@ -979,11 +1337,44 @@ function BookingBuilder({ events, accounts, enabledCals, user, onFlash, onClose 
     return Object.values(map);
   }, [availSlots]);
 
-  const generateLink = () => {
+  const generateLink = async () => {
+    const { data: { session } } = await supabase.auth.getSession();
+    const refreshToken = session?.provider_refresh_token;
+    if (!refreshToken) { onFlash("Necesitás reautenticarte con Google"); return; }
+
     const id = Math.random().toString(36).substr(2, 8);
-    const link = `https://maestro.app/book/${user?.name?.toLowerCase().replace(/\s/g,"-")||"user"}/${id}`;
+    const slug = user?.name?.toLowerCase().replace(/\s+/g, "-") || "user";
+    const busyBlocks = events
+      .filter(e => !e.allDay && (e.isTask || enabledCals.includes(e.cid)))
+      .map(e => ({
+        date: e.date.toISOString().split("T")[0],
+        sh: e.sh, sm: e.sm, eh: e.eh, em: e.em,
+      }));
+
+    const { error } = await supabase.from("booking_links").insert({
+      id,
+      user_id: session.user.id,
+      user_slug: slug,
+      title: bk.title,
+      duration: bk.duration,
+      date_from: bk.dateFrom,
+      date_to: bk.dateTo,
+      hour_start: bk.hourStart,
+      hour_end: bk.hourEnd,
+      weekdays: bk.weekdays,
+      buffer: bk.buffer,
+      max_per_day: bk.maxPerDay,
+      add_video: bk.addVideo,
+      target_cal: bk.targetCal,
+      busy_blocks: busyBlocks,
+      refresh_token: refreshToken,
+    });
+    if (error) { onFlash("Error al guardar link: " + error.message); return; }
+
+    const link = `${window.location.origin}/book/${id}`;
     setGenerated(link);
     onFlash("Link creado");
+    onLinkCreated?.();
   };
 
   const copyLink = () => {
@@ -1360,6 +1751,12 @@ function sessionToUser(session) {
 }
 
 export default function Maestro(){
+  // Public booking page — no auth required
+  const bookMatch = window.location.pathname.match(/^\/book\/([^/]+)/);
+  if (bookMatch) {
+    return <><CSS /><BookingPage linkId={bookMatch[1]} /></>;
+  }
+
   const [authed, setAuthed] = useState(false);
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -1488,6 +1885,8 @@ function MaestroApp({ user, onLogout }){
   const [formError,setFormError]=useState("");
   const [userMenu,setUserMenu]=useState(false);
   const [tlView,setTlView]=useState(()=>localStorage.getItem("maestro_tlview")||"3day");
+  const [bookingLinks,setBookingLinks]=useState([]);
+  const [bookingLinksOpen,setBookingLinksOpen]=useState(false);
   const tlRef=useRef(null);
   const tlPanelRef=useRef(null);
 
@@ -1563,6 +1962,14 @@ function MaestroApp({ user, onLogout }){
   useEffect(()=>{ accountsRef.current = accounts; },[accounts]);
 
   const flash=msg=>{setToast(msg);setTimeout(()=>setToast(null),2200)};
+
+  const loadBookingLinks=useCallback(async()=>{
+    const{data}=await supabase.from("booking_links")
+      .select("id,title,duration,date_from,date_to,created_at")
+      .order("created_at",{ascending:false});
+    setBookingLinks(data||[]);
+  },[]);
+  useEffect(()=>{loadBookingLinks();},[loadBookingLinks]);
 
   // Returns the access token for the account that owns a given calendar
   const getTokenForCal=useCallback((calId)=>{
@@ -2360,6 +2767,42 @@ function MaestroApp({ user, onLogout }){
             </div>
           </div>
 
+          {/* ── Booking Links Section ── */}
+          <div className="bk-sidebar-section">
+            <button className="bk-sidebar-hdr" onClick={()=>setBookingLinksOpen(o=>!o)}>
+              <span className="bk-sidebar-hdr-icon">{bookingLinksOpen?"▾":"▸"}</span>
+              <span className="bk-sidebar-hdr-label">Links de agendamiento</span>
+              <span className="bk-sidebar-add" onClick={e=>{e.stopPropagation();setSheet("new");setForm(f=>({...f,isBooking:true}))}}>{I.plus}</span>
+            </button>
+            {bookingLinksOpen&&(
+              <div className="bk-sidebar-list">
+                {bookingLinks.length===0&&(
+                  <div className="bk-sidebar-empty">Sin links creados</div>
+                )}
+                {bookingLinks.map(bl=>{
+                  const url=`${window.location.origin}/book/${bl.id}`;
+                  return(
+                    <div key={bl.id} className="bk-sidebar-item">
+                      <div className="bk-sidebar-dot"/>
+                      <div className="bk-sidebar-info">
+                        <div className="bk-sidebar-name">{bl.title}</div>
+                        <div className="bk-sidebar-meta">{bl.duration}min · {new Date(bl.date_from+"T00:00").toLocaleDateString("es-AR",{day:"numeric",month:"short"})} – {new Date(bl.date_to+"T00:00").toLocaleDateString("es-AR",{day:"numeric",month:"short"})}</div>
+                      </div>
+                      <button className="bk-sidebar-copy" title="Copiar link"
+                        onClick={()=>navigator.clipboard?.writeText(url).then(()=>flash("Link copiado"))}>
+                        {I.copy}
+                      </button>
+                      <button className="bk-sidebar-del" title="Eliminar"
+                        onClick={async()=>{await supabase.from("booking_links").delete().eq("id",bl.id);loadBookingLinks();flash("Link eliminado");}}>
+                        {I.trash}
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+
           {/* ── Today Card ── */}
           {!tlOpen && (
             <div className="today-card" {...swipeHandlers}>
@@ -2562,6 +3005,7 @@ function MaestroApp({ user, onLogout }){
                   user={user}
                   onFlash={flash}
                   onClose={()=>setSheet(null)}
+                  onLinkCreated={loadBookingLinks}
                 />
               ) : (
               <>
