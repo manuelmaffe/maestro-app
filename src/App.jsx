@@ -607,6 +607,20 @@ const CSS = () => (
     .acc-av{width:36px;height:36px;border-radius:var(--rs);display:flex;align-items:center;justify-content:center;font-weight:800;font-size:15px;color:white;flex-shrink:0}
     .acc-inf{flex:1;min-width:0}.acc-n{font-size:13px;font-weight:600}.acc-e{font-size:11px;color:var(--t3);font-family:var(--fm);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
     .acc-reconnect-btn{margin-top:4px;padding:3px 8px;background:#FFF3CD;border:1px solid #F59E0B;border-radius:6px;color:#92400E;font-size:11px;font-weight:600;cursor:pointer;font-family:var(--fm)}
+    .myacc-profile{display:flex;align-items:center;gap:14px;padding:4px 0 20px;border-bottom:1px solid var(--bl);margin-bottom:20px}
+    .myacc-av{width:52px;height:52px;border-radius:50%;background:var(--t);color:var(--w);display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:700;flex-shrink:0}
+    .myacc-name{font-size:15px;font-weight:600;color:var(--t)}
+    .myacc-email{font-size:12px;color:var(--t3);font-family:var(--fm);margin-top:2px}
+    .myacc-section{margin-bottom:20px}
+    .myacc-section-title{font-size:11px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.6px;font-family:var(--fm);margin-bottom:10px}
+    .myacc-plan-row{display:flex;align-items:center;justify-content:space-between;gap:12px;background:var(--hover);border-radius:10px;padding:12px 14px}
+    .myacc-plan-name{font-size:13px;font-weight:600;color:var(--t)}
+    .myacc-plan-desc{font-size:11px;color:var(--t3);font-family:var(--fm);margin-top:2px}
+    .myacc-badge-active{background:var(--obg);color:var(--ok);font-size:11px;font-weight:700;padding:3px 8px;border-radius:6px;font-family:var(--fm);flex-shrink:0}
+    .myacc-pw-sent{font-size:13px;color:var(--ok);font-family:var(--fm);padding:10px 14px;background:var(--obg);border-radius:8px}
+    .btn-outline{padding:9px 16px;border-radius:8px;border:1.5px solid var(--brd);background:var(--w);font-size:13px;font-weight:600;cursor:pointer;font-family:var(--fm);color:var(--t);transition:all .12s}
+    .btn-outline:hover{border-color:var(--t);background:var(--hover)}
+    .btn-outline:disabled{opacity:.5;cursor:not-allowed}
     .cal-si{display:flex;align-items:center;gap:8px;padding:8px 0 8px 48px}
     .cal-d{width:8px;height:8px;border-radius:50%;flex-shrink:0}.cal-n{flex:1;font-size:12px;color:var(--t2)}
     .add-ab{display:flex;align-items:center;gap:10px;padding:12px 0;width:100%;border:none;background:none;color:var(--t3);font-size:13px;font-weight:500;font-family:var(--f);cursor:pointer}
@@ -879,9 +893,13 @@ const CSS = () => (
     .td-done-hdr:hover{color:var(--t3)}
     /* Expanded todos panel */
     .td-exp-sheet{max-height:92vh}
-    .td-exp-item{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--bl);cursor:pointer}
+    .td-exp-item{display:flex;align-items:center;gap:10px;padding:10px 4px;border-bottom:1px solid var(--bl);cursor:pointer;transition:background .1s;border-radius:6px}
     .td-exp-item:last-child{border-bottom:none}
+    .td-exp-item.drag-over{background:var(--hover);border-top:2px solid var(--t3);margin-top:-2px}
     .td-exp-item:hover .td-exp-del{opacity:1}
+    .td-exp-drag{font-size:15px;color:var(--t4);cursor:grab;flex-shrink:0;padding:0 2px;user-select:none;opacity:0;transition:opacity .15s}
+    .td-exp-item:hover .td-exp-drag{opacity:1}
+    .td-exp-drag:active{cursor:grabbing}
     .td-exp-left{flex-shrink:0}
     .td-exp-info{flex:1;min-width:0}
     .td-exp-title{font-size:14px;font-weight:500;color:var(--t);letter-spacing:-.2px}
@@ -2253,9 +2271,12 @@ function MaestroApp({ user, onLogout }){
   const [editLink,setEditLink]=useState(null);
   const [userPlan,setUserPlan]=useState("free");
   const [todos,setTodos]=useState([]);
+  const [todosOrder,setTodosOrder]=useState(()=>{try{return JSON.parse(localStorage.getItem("maestro_todos_order")||"[]");}catch{return [];}});
   const [todosOpen,setTodosOpen]=useState(true);
   const [todosExpanded,setTodosExpanded]=useState(false);
   const [doneOpen,setDoneOpen]=useState(false);
+  const dragTodoRef=useRef(null);
+  const [dragOverTodoId,setDragOverTodoId]=useState(null);
   const [todoSheet,setTodoSheet]=useState(null); // null | "new" | {todo object}
   const [todoForm,setTodoForm]=useState({});
   const [suggestions,setSuggestions]=useState([]);
@@ -2324,6 +2345,9 @@ function MaestroApp({ user, onLogout }){
     try{ localStorage.setItem("maestro_secondary_accounts",JSON.stringify(accounts.filter(a=>a.id!=="g1"))); }
     catch{}
   },[accounts]);
+
+  // Persistir orden personalizado de todos
+  useEffect(()=>{try{localStorage.setItem("maestro_todos_order",JSON.stringify(todosOrder));}catch{}},[todosOrder]);
 
   // Persistir preferencias on/off de cuentas y calendarios (merge para no perder la cuenta primaria al recargar)
   useEffect(()=>{
@@ -3521,6 +3545,9 @@ function MaestroApp({ user, onLogout }){
                 <div className="user-menu-name">{user?.name||"Usuario"}</div>
                 <div className="user-menu-email">{user?.email||""}</div>
               </div>
+              <button className="user-menu-item" onClick={()=>{setUserMenu(false);setSheet("myAccount")}}>
+                {I.users} Mi cuenta
+              </button>
               <button className="user-menu-item" onClick={()=>{setUserMenu(false);setSheet("accounts")}}>
                 {I.layers} Cuentas y calendarios
               </button>
@@ -3752,6 +3779,68 @@ function MaestroApp({ user, onLogout }){
           </div>
         )}
 
+        {sheet==="myAccount"&&(()=>{
+          const [pwSent,setPwSent]=useState(false);
+          const [pwLoading,setPwLoading]=useState(false);
+          const sendReset=async()=>{
+            setPwLoading(true);
+            await supabase.auth.resetPasswordForEmail(user?.email||"",{redirectTo:window.location.origin});
+            setPwSent(true); setPwLoading(false);
+          };
+          const initials=(user?.name||"U").split(" ").map(w=>w[0]).slice(0,2).join("").toUpperCase();
+          return(
+            <>
+              <div className="ov" onClick={()=>setSheet(null)}/>
+              <div className="sh">
+                <div className="sh-grab"/>
+                <div className="sh-head"><span className="sh-h">Mi cuenta</span><button className="ib" onClick={()=>setSheet(null)}>{I.x}</button></div>
+                <div className="sh-body">
+                  {/* Profile */}
+                  <div className="myacc-profile">
+                    <div className="myacc-av">{initials}</div>
+                    <div>
+                      <div className="myacc-name">{user?.name||"—"}</div>
+                      <div className="myacc-email">{user?.email||"—"}</div>
+                    </div>
+                  </div>
+
+                  {/* Plan */}
+                  <div className="myacc-section">
+                    <div className="myacc-section-title">Suscripción</div>
+                    <div className="myacc-plan-row">
+                      <div>
+                        <div className="myacc-plan-name">{userPlan==="free"?"Plan Gratuito":"Plan Individual"}</div>
+                        <div className="myacc-plan-desc">{userPlan==="free"?"Hasta 2 cuentas, 1 link de agendamiento":"Cuentas ilimitadas, links ilimitados"}</div>
+                      </div>
+                      {userPlan==="free"
+                        ?<button className="btn-b" style={{flexShrink:0}} onClick={()=>{setSheet(null);setUpgradeModal("general");}}>Mejorar plan</button>
+                        :<span className="myacc-badge-active">Activo</span>
+                      }
+                    </div>
+                  </div>
+
+                  {/* Security */}
+                  <div className="myacc-section">
+                    <div className="myacc-section-title">Seguridad</div>
+                    <div className="myacc-plan-desc" style={{marginBottom:10}}>Tu cuenta usa Google para autenticarse. Podés recibir un email para establecer una contraseña adicional.</div>
+                    {pwSent
+                      ?<div className="myacc-pw-sent">✉️ Email enviado a {user?.email}</div>
+                      :<button className="btn-outline" onClick={sendReset} disabled={pwLoading}>{pwLoading?"Enviando…":"Enviar email de restablecimiento"}</button>
+                    }
+                  </div>
+
+                  {/* Danger */}
+                  <div className="myacc-section" style={{paddingTop:16,borderTop:"1px solid var(--bl)"}}>
+                    <button className="user-menu-item danger" style={{padding:"10px 0",width:"100%"}} onClick={()=>{setSheet(null);onLogout();}}>
+                      {I.x} Cerrar sesión
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </>
+          );
+        })()}
+
         {sheet==="accounts"&&(
           <div className="sh">
             <div className="sh-grab"/><div className="sh-head"><span className="sh-h">Cuentas</span><button className="ib" onClick={()=>setSheet(null)}>{I.x}</button></div>
@@ -3776,10 +3865,37 @@ function MaestroApp({ user, onLogout }){
 
         {/* ── Todos expanded panel ── */}
         {todosExpanded&&(()=>{
-          const pendingTodos=todos.filter(t=>!t.done);
+          // Ordenar pendientes según el orden guardado por el usuario
+          const allPending=todos.filter(t=>!t.done);
           const doneTodos=todos.filter(t=>t.done);
-          const TodoRow=({td})=>(
-            <div className="td-exp-item" onClick={()=>{setTodoForm({...td});setTodoSheet(td);}}>
+          const orderMap=new Map(todosOrder.map((id,i)=>[id,i]));
+          const pendingTodos=[...allPending].sort((a,b)=>{
+            const ai=orderMap.has(a.id)?orderMap.get(a.id):Infinity;
+            const bi=orderMap.has(b.id)?orderMap.get(b.id):Infinity;
+            return ai-bi;
+          });
+
+          const reorder=(fromId,toId)=>{
+            if(!fromId||fromId===toId) return;
+            const base=pendingTodos.map(t=>t.id);
+            const from=base.indexOf(fromId), to=base.indexOf(toId);
+            if(from===-1||to===-1) return;
+            const next=[...base];
+            next.splice(from,1); next.splice(to,0,fromId);
+            setTodosOrder(next);
+          };
+
+          const TodoRow=({td,draggable:isDraggable=false})=>(
+            <div
+              className={`td-exp-item${dragOverTodoId===td.id?" drag-over":""}`}
+              draggable={isDraggable}
+              onDragStart={isDraggable?e=>{dragTodoRef.current=td.id;e.dataTransfer.effectAllowed="move";}:undefined}
+              onDragOver={isDraggable?e=>{e.preventDefault();setDragOverTodoId(td.id);}:undefined}
+              onDragLeave={isDraggable?()=>setDragOverTodoId(null):undefined}
+              onDrop={isDraggable?e=>{e.preventDefault();reorder(dragTodoRef.current,td.id);setDragOverTodoId(null);dragTodoRef.current=null;}:undefined}
+              onDragEnd={isDraggable?()=>{setDragOverTodoId(null);dragTodoRef.current=null;}:undefined}
+              onClick={()=>{setTodoForm({...td});setTodoSheet(td);}}>
+              {isDraggable&&<div className="td-exp-drag" title="Arrastrar para reordenar">⠿</div>}
               <div className="td-exp-left">
                 <button className={`td-check${td.done?" done":""}`} style={{opacity:1}} onClick={e=>{e.stopPropagation();toggleTodoDone(td);}}>{td.done?I.taskDone:I.taskOpen}</button>
               </div>
@@ -3787,7 +3903,7 @@ function MaestroApp({ user, onLogout }){
                 <div className={`td-exp-title${td.done?" done":""}`}>{td.title}</div>
                 {td.description&&<div className="td-exp-desc">{td.description}</div>}
                 <div className="td-exp-meta">
-                  {td.priority&&td.priority!=="none"&&<span className="td-exp-prio" style={{color:PRIO[td.priority]?.color}}>{PRIO[td.priority]?.label}</span>}
+                  {td.priority&&td.priority!=="none"&&<span className="td-exp-prio" style={{background:PRIO[td.priority]?.color+"22",color:PRIO[td.priority]?.color,padding:"1px 6px",borderRadius:4}}>{PRIO[td.priority]?.label}</span>}
                   {td.estimated_minutes&&<span>{td.estimated_minutes}min</span>}
                   {td.scheduled_date&&<span style={{color:"#C89520",fontWeight:600}}>{new Date(td.scheduled_date+"T00:00:00").toLocaleDateString("es-AR",{weekday:"short",day:"numeric",month:"short"})} {td.scheduled_sh!=null?fmt(td.scheduled_sh,td.scheduled_sm??0):""}</span>}
                 </div>
@@ -3814,18 +3930,9 @@ function MaestroApp({ user, onLogout }){
                       <div style={{fontSize:13}}>Todo al día. Agregá una tarea con el botón de arriba.</div>
                     </div>
                   )}
-                  {PRIO_ORDER.map(p=>{
-                    const group=pendingTodos.filter(t=>t.priority===p);
-                    if(!group.length) return null;
-                    return(
-                      <div key={p} style={{marginBottom:12}}>
-                        {group.map(td=><TodoRow key={td.id} td={td}/>)}
-                      </div>
-                    );
-                  })}
-                  {pendingTodos.filter(t=>t.priority==="none").length===0&&pendingTodos.some(t=>t.priority==="none")&&null}
+                  {pendingTodos.map(td=><TodoRow key={td.id} td={td} draggable={true}/>)}
                   {pendingTodos.length>0&&(
-                    <button className="td-suggest-btn" style={{width:"100%",margin:"4px 0 16px"}} onClick={()=>{setTodosExpanded(false);suggestTodos();}}>✨ Sugerir organización</button>
+                    <button className="td-suggest-btn" style={{width:"100%",margin:"8px 0 16px"}} onClick={()=>{setTodosExpanded(false);suggestTodos();}}>✨ Sugerir organización</button>
                   )}
                   {doneTodos.length>0&&(
                     <>
