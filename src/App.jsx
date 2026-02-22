@@ -2328,13 +2328,11 @@ function MaestroApp({ user, onLogout }){
     const today_str=`${YR}-${pad(MO+1)}-${pad(DA)}`;
     const tz=Intl.DateTimeFormat().resolvedOptions().timeZone;
     try{
-      const res=await fetch(`${SUPABASE_URL}/functions/v1/suggest-todos`,{
-        method:"POST",
-        headers:{"Content-Type":"application/json","Authorization":`Bearer ${SUPABASE_ANON_KEY}`},
-        body:JSON.stringify({todos:pending,freeSlots,today:today_str,timezone:tz}),
+      const {data,error:fnErr}=await supabase.functions.invoke("suggest-todos",{
+        body:{todos:pending,freeSlots,today:today_str,timezone:tz},
       });
-      const data=await res.json();
-      setSuggestions(data.suggestions||[]);
+      if(fnErr) throw fnErr;
+      setSuggestions(data?.suggestions||[]);
     }catch(e){
       flash("Error al obtener sugerencias");
       setSuggestSheet(false);
