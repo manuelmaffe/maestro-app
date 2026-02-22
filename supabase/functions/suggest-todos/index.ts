@@ -1,5 +1,3 @@
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
@@ -9,20 +7,6 @@ Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
 
   try {
-    const authHeader = req.headers.get("Authorization");
-    if (!authHeader) throw new Error("No authorization header");
-
-    const supabase = createClient(
-      Deno.env.get("SUPABASE_URL")!,
-      Deno.env.get("SUPABASE_ANON_KEY")!,
-      { global: { headers: { Authorization: authHeader } } }
-    );
-
-    // Get current user
-    const { data: { user }, error: ue } = await supabase.auth.getUser();
-    if (ue || !user) throw new Error("Unauthorized");
-
-    // Get body
     const { todos, freeSlots } = await req.json();
     if (!todos?.length) throw new Error("No todos provided");
 
@@ -31,11 +15,14 @@ Deno.serve(async (req) => {
       `${i+1}. "${t.title}" — prioridad: ${t.priority}, duración estimada: ${t.estimated_minutes}min${t.scheduled_date ? `, fecha sugerida: ${t.scheduled_date}` : ""}`
     ).join("\n");
 
-    const slotsText = freeSlots.slice(0, 20).map((s: {date:string;sh:number;sm:number;eh:number;em:number}) => {
-      const fmt = (h: number, m: number) => `${String(h).padStart(2,"0")}:${String(m).padStart(2,"0")}`;
-      const dur = (s.eh * 60 + s.em) - (s.sh * 60 + s.sm);
-      return `${s.date} ${fmt(s.sh, s.sm)}–${fmt(s.eh, s.em)} (${dur}min libres)`;
-    }).join("\n");
+    const slots = (freeSlots || []).slice(0, 20);
+    const slotsText = slots.length
+      ? slots.map((s: {date:string;sh:number;sm:number;eh:number;em:number}) => {
+          const fmt = (h: number, m: number) => `${String(h).padStart(2,"0")}:${String(m).padStart(2,"0")}`;
+          const dur = (s.eh * 60 + s.em) - (s.sh * 60 + s.sm);
+          return `${s.date} ${fmt(s.sh, s.sm)}–${fmt(s.eh, s.em)} (${dur}min libres)`;
+        }).join("\n")
+      : "No hay slots disponibles";
 
     const prompt = `Eres un asistente de productividad. El usuario tiene las siguientes tareas pendientes:
 
@@ -91,7 +78,6 @@ Reglas:
     // Parse JSON from response
     let suggestions: unknown[] = [];
     try {
-      // Extract JSON array from text (in case there's any surrounding text)
       const match = rawText.match(/\[[\s\S]*\]/);
       suggestions = match ? JSON.parse(match[0]) : [];
     } catch {
