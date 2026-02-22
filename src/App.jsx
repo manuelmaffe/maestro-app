@@ -86,17 +86,18 @@ const I = {
 
 const CSS = () => (
   <style>{`
-    @import url('https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&family=Instrument+Serif:ital@0;1&family=IBM+Plex+Mono:wght@400;500&display=swap');
+    @import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=Instrument+Serif:ital@0;1&display=swap');
     *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+    ::selection{background:rgba(200,149,32,0.18);color:#2C2417}
     :root{
-      --w:#FFF;--bg:#FAFAFA;--hover:#F4F4F5;--brd:#E8E8EB;--bl:#F0F0F2;
-      --t:#111;--t2:#555;--t3:#999;--t4:#BBB;
+      --w:#FFFDF8;--bg:#FAF7F0;--hover:#F3EFE6;--brd:rgba(180,160,120,0.32);--bl:rgba(180,160,120,0.16);
+      --t:#2C2417;--t2:#6B5F4F;--t3:#9A8E7E;--t4:#C5B99D;
       --danger:#DC2626;--dbg:#FEF2F2;--ok:#059669;--obg:#ECFDF5;
-      --wbg:#FFFBEB;--warn:#D97706;--blue:#2563EB;--bbg:#EFF6FF;
+      --wbg:#FFFBEB;--warn:#D97706;--blue:#C89520;--bbg:#FFFBEB;
       --r:12px;--rs:8px;
-      --f:'Instrument Sans',-apple-system,sans-serif;
+      --f:'DM Sans',-apple-system,sans-serif;
       --fs:'Instrument Serif',Georgia,serif;
-      --fm:'IBM Plex Mono',monospace;
+      --fm:'DM Sans',-apple-system,sans-serif;
     }
     body{font-family:var(--f);background:var(--bg);color:var(--t);-webkit-font-smoothing:antialiased;overflow:hidden}
 
@@ -173,14 +174,14 @@ const CSS = () => (
     .today-card{
       position:absolute;bottom:16px;left:14px;right:14px;
       background:var(--w);border-radius:16px;
-      box-shadow:0 4px 24px rgba(0,0,0,.10),0 1px 4px rgba(0,0,0,.06);
+      box-shadow:0 4px 24px rgba(44,36,23,.08),0 1px 4px rgba(44,36,23,.05);
       border:1px solid var(--bl);
       cursor:pointer;transition:all .2s ease;
       z-index:10;overflow:hidden;
       -webkit-user-select:none;user-select:none;
       touch-action:pan-y;
     }
-    .today-card:hover{box-shadow:0 8px 32px rgba(0,0,0,.13)}
+    .today-card:hover{box-shadow:0 8px 32px rgba(44,36,23,.12)}
 
     /* Timeline nav buttons */
     .tl-nav-btn{
@@ -385,8 +386,8 @@ const CSS = () => (
     .fg{margin-bottom:20px}
     .fl{font-size:10px;font-weight:600;color:var(--t3);margin-bottom:6px;display:flex;align-items:center;gap:5px;font-family:var(--fm);text-transform:uppercase;letter-spacing:1px}
     .fl svg{opacity:.5}
-    .fi{width:100%;padding:12px 14px;border-radius:var(--rs);border:1px solid var(--brd);background:var(--w);color:var(--t);font-size:15px;font-family:var(--f);outline:none;transition:border .15s}
-    .fi:focus{border-color:var(--t)}.fi::placeholder{color:var(--t4)}
+    .fi{width:100%;padding:12px 14px;border-radius:var(--rs);border:1px solid var(--brd);background:var(--bg);color:var(--t);font-size:15px;font-family:var(--f);outline:none;transition:border .15s,box-shadow .15s}
+    .fi:focus{border-color:#C89520;box-shadow:0 0 0 3px rgba(200,149,32,0.12)}.fi::placeholder{color:var(--t4)}
     .fr{display:flex;gap:10px}.fr>*{flex:1}
 
     /* Divider */
@@ -447,15 +448,15 @@ const CSS = () => (
     /* Maestro task badge in form */
     .maestro-task-badge{
       display:flex;align-items:center;gap:12px;padding:12px 14px;
-      border-radius:var(--r);background:linear-gradient(135deg,#6366F108,#6366F10D);
-      border:1px solid #6366F120;
+      border-radius:var(--r);background:linear-gradient(135deg,rgba(200,149,32,0.06),rgba(200,149,32,0.10));
+      border:1px solid rgba(200,149,32,0.18);
     }
 
     /* ── Booking Builder ── */
     .booking-builder{padding:0}
     .bk-hero{
       display:flex;align-items:flex-start;gap:12px;padding:14px 16px;
-      background:linear-gradient(135deg,#11101708,#1110170D);border-radius:var(--r);
+      background:linear-gradient(135deg,rgba(200,149,32,0.06),rgba(200,149,32,0.10));border-radius:var(--r);
       margin-bottom:20px;border:1px solid var(--bl);
     }
     .bk-hero-icon{
@@ -593,9 +594,9 @@ const CSS = () => (
     .tg.tg-sm{width:26px;height:14px;border-radius:7px}
     .tg.tg-sm .tg-d{width:10px;height:10px;top:2px}
     .tg.tg-sm.on .tg-d{left:14px}.tg.tg-sm.off .tg-d{left:2px}
-    .btn-m{width:100%;padding:13px;border-radius:var(--rs);border:none;background:var(--t);color:var(--w);font-size:14px;font-weight:600;font-family:var(--f);cursor:pointer;transition:all .12s}
+    .btn-m{width:100%;padding:13px;border-radius:100px;border:none;background:var(--t);color:var(--w);font-size:14px;font-weight:600;font-family:var(--f);cursor:pointer;transition:all .12s}
     .btn-m:hover{opacity:.9}.btn-m:active{transform:scale(.98)}
-    .btn-g{width:100%;padding:11px;border-radius:var(--rs);border:1px solid var(--brd);background:var(--w);color:var(--t2);font-size:13px;font-weight:500;font-family:var(--f);cursor:pointer;margin-top:8px;transition:all .12s;display:flex;align-items:center;justify-content:center;gap:6px}
+    .btn-g{width:100%;padding:11px;border-radius:100px;border:1px solid var(--brd);background:var(--w);color:var(--t2);font-size:13px;font-weight:500;font-family:var(--f);cursor:pointer;margin-top:8px;transition:all .12s;display:flex;align-items:center;justify-content:center;gap:6px}
     .btn-g:hover{background:var(--hover);color:var(--t)}
     .btn-g.dng{border-color:rgba(220,38,38,.2);color:var(--danger)}.btn-g.dng:hover{background:var(--dbg)}
 
@@ -628,7 +629,7 @@ const CSS = () => (
     .auth-wrap::-webkit-scrollbar{display:none}
     .auth-bg{
       position:absolute;top:0;left:0;right:0;height:220px;
-      background:linear-gradient(135deg,#111 0%,#2a2a2e 100%);
+      background:linear-gradient(135deg,#2C2417 0%,#3d3020 100%);
       border-radius:0 0 32px 32px;flex-shrink:0;
     }
     .auth-card{
@@ -652,7 +653,7 @@ const CSS = () => (
     .auth-providers{display:flex;flex-direction:column;gap:8px;margin-bottom:20px}
     .auth-prov-btn{
       display:flex;align-items:center;gap:12px;padding:12px 16px;
-      border-radius:var(--r);border:1px solid var(--brd);background:var(--w);
+      border-radius:100px;border:1px solid var(--brd);background:var(--w);
       cursor:pointer;transition:all .12s;font-family:var(--f);
       font-size:14px;font-weight:500;color:var(--t);width:100%;
     }
@@ -680,7 +681,7 @@ const CSS = () => (
       border:1px solid var(--brd);background:var(--bg);color:var(--t);
       font-size:15px;font-family:var(--f);outline:none;transition:all .15s;
     }
-    .auth-fi:focus{border-color:var(--t);background:var(--w)}
+    .auth-fi:focus{border-color:#C89520;background:var(--w);box-shadow:0 0 0 3px rgba(200,149,32,0.12)}
     .auth-fi::placeholder{color:var(--t4)}
 
     .auth-error{
@@ -722,7 +723,7 @@ const CSS = () => (
     .bk-sidebar-empty{font-size:11px;color:var(--t4);padding:8px 8px;font-family:var(--fm)}
     .bk-sidebar-item{display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:8px;cursor:default}
     .bk-sidebar-item:hover{background:var(--hover)}
-    .bk-sidebar-dot{width:8px;height:8px;border-radius:50%;background:var(--blue);flex-shrink:0}
+    .bk-sidebar-dot{width:8px;height:8px;border-radius:50%;background:#C89520;flex-shrink:0}
     .bk-sidebar-info{flex:1;min-width:0}
     .bk-sidebar-name{font-size:12px;font-weight:600;color:var(--t);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-family:var(--fm)}
     .bk-sidebar-meta{font-size:10px;color:var(--t3);font-family:var(--fm)}
@@ -733,7 +734,7 @@ const CSS = () => (
     .bk-sidebar-copy:hover,.bk-sidebar-edit:hover{color:var(--t)}
 
     /* ── Public booking page ── */
-    .bk-page{min-height:100vh;background:#f8fafc;font-family:var(--fm)}
+    .bk-page{min-height:100vh;background:var(--bg);font-family:var(--f)}
     .bk-page-header{background:var(--w);border-bottom:1px solid var(--bl);padding:16px 24px;display:flex;align-items:center;gap:12px}
     .bk-page-brand{font-size:14px;font-weight:700;color:var(--t);letter-spacing:-.3px}
     .bk-page-body{max-width:860px;margin:0 auto;padding:32px 16px;display:grid;grid-template-columns:280px 1fr;gap:24px}
@@ -767,7 +768,7 @@ const CSS = () => (
     .bk-done-sub{font-size:13px;color:var(--t3);margin-bottom:20px}
 
     .auth-submit{
-      width:100%;padding:14px;border-radius:var(--r);border:none;
+      width:100%;padding:14px;border-radius:100px;border:none;
       background:var(--t);color:var(--w);font-size:15px;font-weight:600;
       font-family:var(--f);cursor:pointer;transition:all .12s;
       letter-spacing:-0.2px;display:flex;align-items:center;justify-content:center;
