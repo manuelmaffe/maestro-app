@@ -834,6 +834,18 @@ const CSS = () => (
     .user-menu-item.danger{color:var(--danger)}
     .user-menu-item.danger:hover{background:var(--dbg)}
 
+    /* ── DatePicker ── */
+    .dp-trigger{width:100%;padding:12px 14px;border-radius:var(--rs);border:1px solid var(--brd);background:var(--bg);color:var(--t);font-size:15px;font-family:var(--f);text-align:left;cursor:pointer;transition:border .15s,box-shadow .15s;outline:none;display:flex;align-items:center;justify-content:space-between;gap:8px}
+    .dp-trigger:focus,.dp-trigger.open{border-color:#C89520;box-shadow:0 0 0 3px rgba(200,149,32,0.12)}
+    .dp-trigger.empty{color:var(--t4)}
+    .dp-panel{border:1px solid var(--bl);border-radius:var(--r);padding:10px 12px;margin-top:6px;background:var(--w);box-shadow:0 4px 20px rgba(44,36,23,0.08)}
+    .dp-cell{aspect-ratio:1;border:none;border-radius:6px;background:transparent;font-family:var(--f);font-size:12px;font-weight:500;cursor:pointer;transition:background .1s;color:var(--t2);display:flex;align-items:center;justify-content:center;padding:0;width:100%}
+    .dp-cell:hover{background:var(--hover)}
+    .dp-cell.dp-sel{background:var(--t)!important;color:var(--w)!important;font-weight:700}
+    .dp-cell.dp-tod{font-weight:700;color:#C89520;outline:1.5px solid #C89520;outline-offset:-2px;border-radius:6px}
+    .dp-cell.dp-oth{color:var(--t4);cursor:default}
+    .dp-cell.dp-oth:hover{background:transparent}
+
     @keyframes fi{from{opacity:0}to{opacity:1}}
     @keyframes su{from{transform:translateY(100%)}to{transform:translateY(0)}}
     @keyframes ti{from{opacity:0;transform:translateX(-50%) translateY(-8px)}to{opacity:1;transform:translateX(-50%) translateY(0)}}
@@ -1441,13 +1453,11 @@ function BookingBuilder({ events, accounts, enabledCals, user, onFlash, onClose,
         <div className="fr">
           <div>
             <div style={{fontSize:11,color:"var(--t3)",marginBottom:4}}>Desde</div>
-            <input type="date" className="fi" value={bk.dateFrom}
-              onChange={e=>{setBk(b=>({...b,dateFrom:e.target.value}));setGenerated(null)}} />
+            <DatePicker value={bk.dateFrom} onChange={v=>{setBk(b=>({...b,dateFrom:v}));setGenerated(null)}}/>
           </div>
           <div>
             <div style={{fontSize:11,color:"var(--t3)",marginBottom:4}}>Hasta</div>
-            <input type="date" className="fi" value={bk.dateTo}
-              onChange={e=>{setBk(b=>({...b,dateTo:e.target.value}));setGenerated(null)}} />
+            <DatePicker value={bk.dateTo} onChange={v=>{setBk(b=>({...b,dateTo:v}));setGenerated(null)}}/>
           </div>
         </div>
       </div>
@@ -1847,6 +1857,70 @@ function AttendeeField({ attendees, onChange }) {
           <button className="att-chip-remove" onClick={()=>onChange(attendees.filter((_,j)=>j!==i))}>×</button>
         </div>
       ))}
+    </div>
+  );
+}
+
+function DatePicker({ value, onChange, style }) {
+  const [open, setOpen] = useState(false);
+  const init = value ? new Date(value + "T12:00") : new Date();
+  const [vm, setVm] = useState(init.getMonth());
+  const [vy, setVy] = useState(init.getFullYear());
+
+  useEffect(() => {
+    if (value) { const d = new Date(value + "T12:00"); setVm(d.getMonth()); setVy(d.getFullYear()); }
+  }, [value]);
+
+  const selectDay = day => { onChange(`${vy}-${pad(vm+1)}-${pad(day)}`); setOpen(false); };
+
+  const first = fdow(vy, vm);
+  const days = dimF(vy, vm);
+  const prevDays = vm === 0 ? dimF(vy-1, 11) : dimF(vy, vm-1);
+  const cells = [];
+  for (let i = 0; i < first; i++) cells.push({ day: prevDays - first + i + 1, cur: false });
+  for (let d = 1; d <= days; d++) cells.push({ day: d, cur: true });
+  while (cells.length % 7 !== 0 || cells.length < 35) cells.push({ day: cells.length - first - days + 1, cur: false });
+
+  const selD = value ? new Date(value+"T12:00").getDate() : null;
+  const selM = value ? new Date(value+"T12:00").getMonth() : null;
+  const selY = value ? new Date(value+"T12:00").getFullYear() : null;
+  const display = value
+    ? new Date(value+"T12:00").toLocaleDateString("es-AR",{weekday:"short",day:"numeric",month:"long"})
+    : null;
+
+  return (
+    <div style={style}>
+      <button type="button" className={`dp-trigger${open?" open":""}${!value?" empty":""}`} onClick={()=>setOpen(o=>!o)}>
+        <span>{display || "Seleccionar fecha"}</span>
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+      </button>
+      {open && (
+        <div className="dp-panel">
+          <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:8}}>
+            <button type="button" className="ma" onClick={()=>{if(vm===0){setVm(11);setVy(y=>y-1);}else setVm(m=>m-1);}}>{I.left}</button>
+            <span style={{fontSize:13,fontWeight:700,color:"var(--t)",letterSpacing:"-0.2px"}}>{MONTHS[vm]} {vy}</span>
+            <button type="button" className="ma" onClick={()=>{if(vm===11){setVm(0);setVy(y=>y+1);}else setVm(m=>m+1);}}>{I.right}</button>
+          </div>
+          <div style={{display:"grid",gridTemplateColumns:"repeat(7,1fr)",marginBottom:4}}>
+            {DAYS_SHORT.map(d=>(
+              <div key={d} style={{textAlign:"center",fontSize:10,fontWeight:600,color:"var(--t4)",padding:"2px 0"}}>{d}</div>
+            ))}
+          </div>
+          <div style={{display:"grid",gridTemplateColumns:"repeat(7,1fr)",gap:1}}>
+            {cells.map((c,i)=>{
+              const isSel=c.cur&&c.day===selD&&vm===selM&&vy===selY;
+              const isTod=c.cur&&c.day===DA&&vm===MO&&vy===YR;
+              return (
+                <button key={i} type="button"
+                  className={`dp-cell${isSel?" dp-sel":isTod?" dp-tod":""}${!c.cur?" dp-oth":""}`}
+                  onClick={()=>c.cur&&selectDay(c.day)}>
+                  {c.cur?c.day:""}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -3128,10 +3202,7 @@ function MaestroApp({ user, onLogout }){
               {/* Date & Time — both events and tasks */}
               <div className="fg">
                 <label className="fl">{I.clock} Fecha y hora</label>
-                <input className="fi" type="date" value={form.date}
-                  onChange={e=>setForm(f=>({...f,date:e.target.value}))}
-                  style={{marginBottom:10}}
-                />
+                <DatePicker value={form.date} onChange={v=>setForm(f=>({...f,date:v}))} style={{marginBottom:10}}/>
                 {!form.isTask && (
                   <label className="tg-row" style={{marginTop:0,cursor:"pointer"}}>
                     <Toggle checked={form.allDay} onChange={e=>setForm(f=>({...f,allDay:e.target.checked}))} icons={false}/>
