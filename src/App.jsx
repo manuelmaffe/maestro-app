@@ -2258,6 +2258,8 @@ function MaestroApp({ user, onLogout }){
   const [vM,setVM]=useState(MO);
   const [vY,setVY]=useState(YR);
   const [sheet,setSheet]=useState(null);
+  const [pwSent,setPwSent]=useState(false);
+  const [pwLoading,setPwLoading]=useState(false);
   const [expandedEvt,setExpandedEvt]=useState(null);
   const [tlOpen,setTlOpen]=useState(false);
   const [tlPhase,setTlPhase]=useState("idle");
@@ -3780,8 +3782,6 @@ function MaestroApp({ user, onLogout }){
         )}
 
         {sheet==="myAccount"&&(()=>{
-          const [pwSent,setPwSent]=useState(false);
-          const [pwLoading,setPwLoading]=useState(false);
           const sendReset=async()=>{
             setPwLoading(true);
             await supabase.auth.resetPasswordForEmail(user?.email||"",{redirectTo:window.location.origin});
@@ -3790,10 +3790,10 @@ function MaestroApp({ user, onLogout }){
           const initials=(user?.name||"U").split(" ").map(w=>w[0]).slice(0,2).join("").toUpperCase();
           return(
             <>
-              <div className="ov" onClick={()=>setSheet(null)}/>
+              <div className="ov" onClick={()=>{setSheet(null);setPwSent(false);}}/>
               <div className="sh">
                 <div className="sh-grab"/>
-                <div className="sh-head"><span className="sh-h">Mi cuenta</span><button className="ib" onClick={()=>setSheet(null)}>{I.x}</button></div>
+                <div className="sh-head"><span className="sh-h">Mi cuenta</span><button className="ib" onClick={()=>{setSheet(null);setPwSent(false);}}>{I.x}</button></div>
                 <div className="sh-body">
                   {/* Profile */}
                   <div className="myacc-profile">
