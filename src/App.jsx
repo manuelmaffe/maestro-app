@@ -366,11 +366,13 @@ const CSS = () => (
 
     /* Sheets */
     .ov{position:absolute;inset:0;background:rgba(0,0,0,.2);backdrop-filter:blur(2px);z-index:70;animation:fi .15s ease}
+    .ov-upgrade{position:absolute;inset:0;background:rgba(0,0,0,.55);backdrop-filter:blur(3px);z-index:70;animation:fi .15s ease}
     .sh{position:absolute;bottom:0;left:0;right:0;background:var(--w);border-radius:20px 20px 0 0;z-index:71;max-height:92vh;overflow-y:auto;animation:su .3s cubic-bezier(.16,1,.3,1);box-shadow:0 -10px 60px rgba(0,0,0,.08)}
     .sh::-webkit-scrollbar{display:none}
 
     @media(min-width:768px){
       .ov{position:fixed;inset:0}
+      .ov-upgrade{position:fixed;inset:0}
       .sh{position:fixed;left:50%;right:auto;bottom:auto;top:50%;
         transform:translate(-50%,-50%);max-width:480px;width:calc(100% - 40px);
         max-height:85vh;border-radius:16px;
@@ -1881,7 +1883,7 @@ function UpgradeModal({ reason, onClose }) {
   const copy = UPGRADE_COPY[reason] || {};
   return (
     <>
-      <div className="ov" onClick={onClose}/>
+      <div className="ov-upgrade" onClick={onClose}/>
       <div className="sh">
         <div className="sh-grab"/>
         <div className="sh-head">
@@ -1889,7 +1891,7 @@ function UpgradeModal({ reason, onClose }) {
           <button className="ib" onClick={onClose}>{I.x}</button>
         </div>
         <div className="sh-body">
-          <div style={{textAlign:"center",marginBottom:24}}>
+          <div style={{textAlign:"center",marginBottom:24,paddingTop:20}}>
             <div style={{width:56,height:56,borderRadius:16,background:"rgba(200,149,32,0.12)",margin:"0 auto 14px",display:"flex",alignItems:"center",justifyContent:"center",fontSize:26}}>⚡</div>
             <div style={{fontSize:17,fontWeight:700,color:"var(--t)",letterSpacing:"-0.3px",marginBottom:8}}>{copy.title}</div>
             <div style={{fontSize:13,color:"var(--t3)",lineHeight:1.55}}>{copy.desc}</div>
@@ -2422,7 +2424,7 @@ function MaestroApp({ user, onLogout }){
         if(userPlan==="free"){
           const weekStart=new Date(d.date);weekStart.setDate(weekStart.getDate()-((weekStart.getDay()+6)%7));weekStart.setHours(0,0,0,0);
           const weekEnd=new Date(weekStart);weekEnd.setDate(weekStart.getDate()+7);
-          const tasksThisWeek=events.filter(e=>e.isTask&&!e.done&&e.date>=weekStart&&e.date<weekEnd).length;
+          const tasksThisWeek=events.filter(e=>e.isTask&&e.date>=weekStart&&e.date<weekEnd).length;
           if(tasksThisWeek>=FREE_LIMITS.tasksPerWeek){setUpgradeModal("tasks");return;}
         }
         const {data,error}=await supabase.from("tasks").insert(row).select().single();
