@@ -876,6 +876,19 @@ const CSS = () => (
     .td-suggest-btn:hover{border-color:#C89520;color:#C89520;background:rgba(200,149,32,0.05)}
     .td-done-hdr{display:flex;align-items:center;gap:6px;width:100%;background:none;border:none;cursor:pointer;padding:6px 16px;font-family:var(--fm);font-size:11px;font-weight:600;color:var(--t4);margin-top:4px}
     .td-done-hdr:hover{color:var(--t3)}
+    /* Expanded todos panel */
+    .td-exp-sheet{max-height:92vh}
+    .td-exp-item{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--bl);cursor:pointer}
+    .td-exp-item:last-child{border-bottom:none}
+    .td-exp-item:hover .td-exp-del{opacity:1}
+    .td-exp-left{flex-shrink:0}
+    .td-exp-info{flex:1;min-width:0}
+    .td-exp-title{font-size:14px;font-weight:500;color:var(--t);letter-spacing:-.2px}
+    .td-exp-title.done{text-decoration:line-through;color:var(--t4)}
+    .td-exp-meta{display:flex;align-items:center;gap:8px;margin-top:3px;font-size:11px;color:var(--t3);font-family:var(--fm);flex-wrap:wrap}
+    .td-exp-prio{font-weight:700}
+    .td-exp-del{background:none;border:none;cursor:pointer;color:var(--t4);padding:4px;border-radius:4px;display:flex;align-items:center;opacity:0;transition:opacity .15s;flex-shrink:0}
+    .td-exp-del:hover{color:var(--danger)}
     .td-empty{font-size:11px;color:var(--t4);padding:8px 8px;font-family:var(--fm)}
 
     /* Suggestion loading */
@@ -2239,6 +2252,7 @@ function MaestroApp({ user, onLogout }){
   const [userPlan,setUserPlan]=useState("free");
   const [todos,setTodos]=useState([]);
   const [todosOpen,setTodosOpen]=useState(true);
+  const [todosExpanded,setTodosExpanded]=useState(false);
   const [doneOpen,setDoneOpen]=useState(false);
   const [todoSheet,setTodoSheet]=useState(null); // null | "new" | {todo object}
   const [todoForm,setTodoForm]=useState({});
@@ -3295,6 +3309,9 @@ function MaestroApp({ user, onLogout }){
               <span className="td-hdr-icon">{todosOpen?"▾":"▸"}</span>
               <span className="td-hdr-label">Pendientes</span>
               <span style={{fontSize:10,color:"var(--t4)",marginRight:4}}>{todos.filter(t=>!t.done).length||""}</span>
+              <button className="td-add" title="Ver todo" onClick={e=>{e.stopPropagation();setTodosExpanded(true);}} style={{marginRight:2}}>
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/></svg>
+              </button>
               <span className="td-add" onClick={e=>{e.stopPropagation();setTodoForm({priority:"none",estimated_minutes:30});setTodoSheet("new");}}>{I.plus}</span>
             </button>
             {todosOpen&&(
@@ -3736,6 +3753,74 @@ function MaestroApp({ user, onLogout }){
         )}
 
         {upgradeModal&&<UpgradeModal reason={upgradeModal} onClose={()=>setUpgradeModal(null)}/>}
+
+        {/* ── Todos expanded panel ── */}
+        {todosExpanded&&(()=>{
+          const pendingTodos=todos.filter(t=>!t.done);
+          const doneTodos=todos.filter(t=>t.done);
+          const TodoRow=({td})=>(
+            <div className="td-exp-item" onClick={()=>{setTodoForm({...td});setTodoSheet(td);}}>
+              <div className="td-exp-left">
+                <button className={`td-check${td.done?" done":""}`} style={{opacity:1}} onClick={e=>{e.stopPropagation();toggleTodoDone(td);}}>{td.done?I.taskDone:I.taskOpen}</button>
+              </div>
+              <div className="td-exp-info">
+                <div className={`td-exp-title${td.done?" done":""}`}>{td.title}</div>
+                <div className="td-exp-meta">
+                  {td.priority&&td.priority!=="none"&&<span className="td-exp-prio" style={{color:PRIO[td.priority]?.color}}>{PRIO[td.priority]?.label}</span>}
+                  {td.estimated_minutes&&<span>{td.estimated_minutes}min</span>}
+                  {td.scheduled_date&&<span style={{color:"#C89520",fontWeight:600}}>{new Date(td.scheduled_date+"T00:00:00").toLocaleDateString("es-AR",{weekday:"short",day:"numeric",month:"short"})} {td.scheduled_sh!=null?fmt(td.scheduled_sh,td.scheduled_sm??0):""}</span>}
+                </div>
+              </div>
+              <button className="td-exp-del" onClick={e=>{e.stopPropagation();deleteTodo(td.id);}}>{I.trash}</button>
+            </div>
+          );
+          return(
+            <>
+              <div className="ov" onClick={()=>setTodosExpanded(false)}/>
+              <div className="sh td-exp-sheet">
+                <div className="sh-grab"/>
+                <div className="sh-head">
+                  <span className="sh-h">Pendientes</span>
+                  <div style={{display:"flex",gap:6}}>
+                    <button className="btn-b" onClick={()=>{setTodoForm({priority:"none",estimated_minutes:30});setTodoSheet("new");}}>+ Agregar</button>
+                    <button className="ib" onClick={()=>setTodosExpanded(false)}>{I.x}</button>
+                  </div>
+                </div>
+                <div className="sh-body" style={{paddingTop:8}}>
+                  {pendingTodos.length===0&&doneTodos.length===0&&(
+                    <div style={{textAlign:"center",padding:"40px 0",color:"var(--t3)"}}>
+                      <div style={{fontSize:28,marginBottom:8}}>✅</div>
+                      <div style={{fontSize:13}}>Todo al día. Agregá una tarea con el botón de arriba.</div>
+                    </div>
+                  )}
+                  {PRIO_ORDER.map(p=>{
+                    const group=pendingTodos.filter(t=>t.priority===p);
+                    if(!group.length) return null;
+                    return(
+                      <div key={p} style={{marginBottom:12}}>
+                        <div className="td-group-label" style={{color:PRIO[p].color,paddingLeft:0}}>{PRIO[p].label}</div>
+                        {group.map(td=><TodoRow key={td.id} td={td}/>)}
+                      </div>
+                    );
+                  })}
+                  {pendingTodos.filter(t=>t.priority==="none").length===0&&pendingTodos.some(t=>t.priority==="none")&&null}
+                  {pendingTodos.length>0&&(
+                    <button className="td-suggest-btn" style={{width:"100%",margin:"4px 0 16px"}} onClick={()=>{setTodosExpanded(false);suggestTodos();}}>✨ Sugerir agenda</button>
+                  )}
+                  {doneTodos.length>0&&(
+                    <>
+                      <button className="td-done-hdr" style={{padding:"6px 0"}} onClick={()=>setDoneOpen(o=>!o)}>
+                        <span className="td-hdr-icon">{doneOpen?"▾":"▸"}</span>
+                        <span>Completadas ({doneTodos.length})</span>
+                      </button>
+                      {doneOpen&&doneTodos.map(td=><TodoRow key={td.id} td={td}/>)}
+                    </>
+                  )}
+                </div>
+              </div>
+            </>
+          );
+        })()}
 
         {/* ── Todo edit sheet ── */}
         {todoSheet&&(
