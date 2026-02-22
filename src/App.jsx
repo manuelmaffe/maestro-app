@@ -2328,8 +2328,11 @@ function MaestroApp({ user, onLogout }){
     const today_str=`${YR}-${pad(MO+1)}-${pad(DA)}`;
     const tz=Intl.DateTimeFormat().resolvedOptions().timeZone;
     try{
+      const {data:{session}}=await supabase.auth.getSession();
+      if(!session?.access_token){flash("Sesión expirada, recargá la página");setSuggestLoading(false);setSuggestSheet(false);return;}
       const {data,error:fnErr}=await supabase.functions.invoke("suggest-todos",{
         body:{todos:pending,freeSlots,today:today_str,timezone:tz},
+        headers:{Authorization:`Bearer ${session.access_token}`},
       });
       if(fnErr) throw fnErr;
       setSuggestions(data?.suggestions||[]);
