@@ -3322,7 +3322,6 @@ function MaestroApp({ user, onLogout }){
                   if(!group.length) return null;
                   return(
                     <div key={p}>
-                      <div className="td-group-label" style={{color:PRIO[p].color}}>{PRIO[p].label}</div>
                       {group.map(td=>(
                         <div key={td.id} className="td-item" onClick={()=>{setTodoForm({...td});setTodoSheet(td);}}>
                           <div className="td-dot" style={{background:PRIO[td.priority]?.color||"var(--t4)"}}/>
@@ -3340,7 +3339,7 @@ function MaestroApp({ user, onLogout }){
                   );
                 })}
                 {todos.filter(t=>!t.done).length>0&&(
-                  <button className="td-suggest-btn" onClick={suggestTodos}>✨ Sugerir agenda</button>
+                  <button className="td-suggest-btn" onClick={suggestTodos}>✨ Sugerir organización</button>
                 )}
                 {/* Completadas */}
                 {todos.filter(t=>t.done).length>0&&(
@@ -3747,7 +3746,7 @@ function MaestroApp({ user, onLogout }){
             <div className="sh-grab"/><div className="sh-head"><span className="sh-h">Conectar cuenta</span><button className="ib" onClick={()=>setSheet("accounts")}>{I.x}</button></div>
             <div className="sh-body">
               <p style={{fontSize:13,color:"var(--t3)",marginBottom:14,lineHeight:1.5}}>Conectá una cuenta para sincronizar calendarios.</p>
-              {PROVIDERS.map(p=>{const dis=p.id!=="google";return(<div key={p.id} className="prov-c" style={dis?{opacity:0.4,cursor:"not-allowed",pointerEvents:"none"}:{}} onClick={dis?undefined:addGoogleAccount}><div className="prov-ic" style={{background:p.logoUrl?"#fff":p.bg,border:p.logoUrl?"1px solid #e5e7eb":"none"}}>{p.logoUrl?<img src={p.logoUrl} style={{width:22,height:22}}/>:p.icon}</div><div style={{flex:1}}><div className="prov-n">{p.name}{dis&&<span style={{fontSize:10,marginLeft:8,color:"var(--t4)",fontStyle:"italic"}}>Próximamente</span>}</div><div className="prov-d">{p.id==="google"?"Conectar cuenta real":"Sincronizar calendarios"}</div></div></div>);})}
+              {PROVIDERS.map(p=>{const dis=p.id!=="google";return(<div key={p.id} className="prov-c" style={dis?{opacity:0.4,cursor:"not-allowed",pointerEvents:"none"}:{}} onClick={dis?undefined:addGoogleAccount}><div className="prov-ic" style={{background:p.logoUrl?"#fff":p.bg,border:p.logoUrl?"1px solid #e5e7eb":"none"}}>{p.logoUrl?<img src={p.logoUrl} style={{width:22,height:22}}/>:p.icon}</div><div style={{flex:1}}><div className="prov-n">{p.name}{dis&&<span style={{fontSize:10,marginLeft:8,color:"var(--t4)",fontStyle:"italic"}}>Próximamente</span>}</div><div className="prov-d">{p.id==="google"?"Sincronizar calendarios":"Sincronizar calendarios"}</div></div></div>);})}
             </div>
           </div>
         )}
@@ -3798,14 +3797,13 @@ function MaestroApp({ user, onLogout }){
                     if(!group.length) return null;
                     return(
                       <div key={p} style={{marginBottom:12}}>
-                        <div className="td-group-label" style={{color:PRIO[p].color,paddingLeft:0}}>{PRIO[p].label}</div>
                         {group.map(td=><TodoRow key={td.id} td={td}/>)}
                       </div>
                     );
                   })}
                   {pendingTodos.filter(t=>t.priority==="none").length===0&&pendingTodos.some(t=>t.priority==="none")&&null}
                   {pendingTodos.length>0&&(
-                    <button className="td-suggest-btn" style={{width:"100%",margin:"4px 0 16px"}} onClick={()=>{setTodosExpanded(false);suggestTodos();}}>✨ Sugerir agenda</button>
+                    <button className="td-suggest-btn" style={{width:"100%",margin:"4px 0 16px"}} onClick={()=>{setTodosExpanded(false);suggestTodos();}}>✨ Sugerir organización</button>
                   )}
                   {doneTodos.length>0&&(
                     <>
