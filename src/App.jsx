@@ -834,6 +834,11 @@ const CSS = () => (
     .user-menu-item.danger{color:var(--danger)}
     .user-menu-item.danger:hover{background:var(--dbg)}
 
+    /* ── TimePicker drum ── */
+    .tp-drum{overflow-y:scroll;scrollbar-width:none;scroll-snap-type:y mandatory;-webkit-overflow-scrolling:touch;position:relative;z-index:2;flex:1}
+    .tp-drum::-webkit-scrollbar{display:none}
+    .tp-drum-item{scroll-snap-align:center;display:flex;align-items:center;justify-content:center;cursor:pointer;user-select:none;font-size:17px;font-family:var(--f);transition:color .1s}
+
     /* ── DatePicker ── */
     .dp-trigger{width:100%;padding:12px 14px;border-radius:var(--rs);border:1px solid var(--brd);background:var(--bg);color:var(--t);font-size:15px;font-family:var(--f);text-align:left;cursor:pointer;transition:border .15s,box-shadow .15s;outline:none;display:flex;align-items:center;justify-content:space-between;gap:8px}
     .dp-trigger:focus,.dp-trigger.open{border-color:#C89520;box-shadow:0 0 0 3px rgba(200,149,32,0.12)}
@@ -1861,6 +1866,115 @@ function AttendeeField({ attendees, onChange }) {
   );
 }
 
+const DRUM_H = 38;
+const TP_HOURS = Array.from({length:24},(_,i)=>i);
+const TP_MINS  = [0,15,30,45];
+
+function Drum({ items, value, onChange, fmtFn=x=>pad(x) }) {
+  const ref = useRef(null);
+  const snap = useRef(null);
+  const ready = useRef(false);
+
+  // Initial scroll position (no animation)
+  useEffect(()=>{
+    const idx = items.indexOf(value);
+    if(ref.current && idx>=0) ref.current.scrollTop = idx * DRUM_H;
+    ready.current = true;
+  },[]);
+
+  // Sync scroll when value changes externally (e.g. from text input)
+  useEffect(()=>{
+    if(!ready.current) return;
+    const idx = items.indexOf(value);
+    if(ref.current && idx>=0) ref.current.scrollTo({top: idx*DRUM_H, behavior:'smooth'});
+  },[value]);
+
+  const handleScroll = ()=>{
+    clearTimeout(snap.current);
+    snap.current = setTimeout(()=>{
+      if(!ref.current) return;
+      const idx = Math.max(0, Math.min(items.length-1, Math.round(ref.current.scrollTop/DRUM_H)));
+      ref.current.scrollTo({top: idx*DRUM_H, behavior:'smooth'});
+      onChange(items[idx]);
+    }, 120);
+  };
+
+  return (
+    <div style={{position:'relative',flex:1,height:DRUM_H*5}}>
+      {/* Selection band */}
+      <div style={{position:'absolute',left:4,right:4,top:DRUM_H*2,height:DRUM_H,background:'var(--hover)',borderRadius:8,pointerEvents:'none',zIndex:1}}/>
+      {/* Top/bottom fade */}
+      <div style={{position:'absolute',left:0,right:0,top:0,height:DRUM_H*2,background:'linear-gradient(to bottom,var(--w),transparent)',pointerEvents:'none',zIndex:3}}/>
+      <div style={{position:'absolute',left:0,right:0,bottom:0,height:DRUM_H*2,background:'linear-gradient(to top,var(--w),transparent)',pointerEvents:'none',zIndex:3}}/>
+      <div ref={ref} className="tp-drum" onScroll={handleScroll} style={{height:'100%'}}>
+        <div style={{height:DRUM_H*2}}/>
+        {items.map((item,i)=>(
+          <div key={i} className="tp-drum-item"
+            style={{height:DRUM_H,fontWeight:item===value?700:400,color:item===value?'var(--t)':'var(--t3)'}}
+            onClick={()=>{ onChange(item); ref.current?.scrollTo({top:i*DRUM_H,behavior:'smooth'}); }}>
+            {fmtFn(item)}
+          </div>
+        ))}
+        <div style={{height:DRUM_H*2}}/>
+      </div>
+    </div>
+  );
+}
+
+function TimePicker({ hour, minute, onChange }) {
+  const [open, setOpen] = useState(false);
+  const [text, setText] = useState('');
+
+  const commitText = (val) => {
+    const raw = (val ?? text).trim();
+    const m1 = raw.match(/^(\d{1,2}):(\d{2})$/);
+    const m2 = raw.match(/^(\d{3,4})$/); // e.g. "0930"
+    let h, rawM;
+    if(m1){ h=parseInt(m1[1]); rawM=parseInt(m1[2]); }
+    else if(m2){ const s=m2[1].padStart(4,'0'); h=parseInt(s.slice(0,2)); rawM=parseInt(s.slice(2)); }
+    else return;
+    h = Math.min(23,Math.max(0,h));
+    const m = TP_MINS.reduce((a,b)=>Math.abs(b-rawM)<Math.abs(a-rawM)?b:a);
+    onChange(h,m);
+    setText('');
+  };
+
+  return (
+    <div>
+      <button type="button" className={`dp-trigger${open?' open':''}`} onClick={()=>setOpen(o=>!o)}>
+        <span>{fmt(hour,minute)}</span>
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+      </button>
+      {open && (
+        <div className="dp-panel" style={{padding:'10px 12px'}}>
+          <input type="text" className="fi"
+            placeholder={fmt(hour,minute)}
+            value={text}
+            onChange={e=>{
+              setText(e.target.value);
+              const m1=e.target.value.trim().match(/^(\d{1,2}):(\d{2})$/);
+              if(m1){
+                const h=Math.min(23,Math.max(0,parseInt(m1[1])));
+                const m=TP_MINS.reduce((a,b)=>Math.abs(b-parseInt(m1[2]))<Math.abs(a-parseInt(m1[2]))?b:a);
+                onChange(h,m);
+              }
+            }}
+            onKeyDown={e=>{ if(e.key==='Enter'){commitText();setOpen(false);} if(e.key==='Escape')setOpen(false); }}
+            onBlur={()=>commitText()}
+            style={{textAlign:'center',fontSize:17,fontWeight:600,marginBottom:10}}
+          />
+          <div style={{display:'flex',alignItems:'center'}}>
+            <Drum items={TP_HOURS} value={hour} onChange={h=>onChange(h,minute)}/>
+            <span style={{fontSize:22,fontWeight:700,color:'var(--t2)',padding:'0 6px',flexShrink:0}}>:</span>
+            <Drum items={TP_MINS} value={minute} onChange={m=>onChange(hour,m)}/>
+          </div>
+          <button type="button" className="btn-m" style={{marginTop:10,padding:'9px'}} onClick={()=>setOpen(false)}>Listo</button>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function DatePicker({ value, onChange, style }) {
   const [open, setOpen] = useState(false);
   const init = value ? new Date(value + "T12:00") : new Date();
@@ -2678,7 +2792,11 @@ function MaestroApp({ user, onLogout }){
 
         {/* Day headers row */}
         <div style={{display:"flex",flexShrink:0,borderBottom:"1px solid var(--bl)"}}>
-          <div style={{width:54,flexShrink:0}}/>
+          <div style={{width:54,flexShrink:0,display:"flex",alignItems:"flex-end",justifyContent:"flex-end",paddingRight:6,paddingBottom:5}}>
+            <span style={{fontSize:8,fontWeight:600,color:"var(--t4)",letterSpacing:.3,lineHeight:1}}>
+              {(()=>{const o=-new Date().getTimezoneOffset();return`GMT${o>=0?'+':''}${String(Math.floor(Math.abs(o)/60)).padStart(2,'0')}`;})()}
+            </span>
+          </div>
           {viewDays.map((d,i) => {
             const isToday = same(d, today);
             const isSel = same(d, selDate);
@@ -3215,23 +3333,13 @@ function MaestroApp({ user, onLogout }){
                 <div className="fr">
                   <div className="fg">
                     <label className="fl">Inicio</label>
-                    <select className="fi" value={`${form.sh}:${form.sm}`}
-                      onChange={e=>{const[h,m]=e.target.value.split(":").map(Number);setForm(f=>{const endM=Math.min(23*60+30,(h*60+m)+60);return{...f,sh:h,sm:m,eh:Math.floor(endM/60),em:endM%60};})}}>
-                      {Array.from({length:48},(_,i)=>{
-                        const h=Math.floor(i/2),m=(i%2)*30;
-                        return (<option key={i} value={`${h}:${m}`}>{fmt(h,m)}</option>);
-                      })}
-                    </select>
+                    <TimePicker hour={form.sh} minute={form.sm}
+                      onChange={(h,m)=>setForm(f=>{const endM=Math.min(23*60+45,(h*60+m)+60);return{...f,sh:h,sm:m,eh:Math.floor(endM/60),em:endM%60};})}/>
                   </div>
                   <div className="fg">
                     <label className="fl">Fin</label>
-                    <select className="fi" value={`${form.eh}:${form.em}`}
-                      onChange={e=>{const[h,m]=e.target.value.split(":").map(Number);setForm(f=>({...f,eh:h,em:m}))}}>
-                      {Array.from({length:48},(_,i)=>{
-                        const h=Math.floor(i/2),m=(i%2)*30;
-                        return (<option key={i} value={`${h}:${m}`}>{fmt(h,m)}</option>);
-                      })}
-                    </select>
+                    <TimePicker hour={form.eh} minute={form.em}
+                      onChange={(h,m)=>setForm(f=>({...f,eh:h,em:m}))}/>
                   </div>
                 </div>
               )}
