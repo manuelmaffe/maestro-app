@@ -1071,9 +1071,12 @@ function BookingPage({ linkId }) {
       if (error) {
         let msg = error.message || "Error al confirmar";
         try {
-          const body = await error.context?.json();
-          if (body?.error === "SLOT_TAKEN") { setFormErr("Este horario ya fue reservado. Elegí otro."); setBooking(false); return; }
-          msg = body?.error || msg;
+          const text = await error.context?.text();
+          if (text) {
+            const body = JSON.parse(text);
+            if (body?.error === "SLOT_TAKEN") { setFormErr("Este horario ya fue reservado. Elegí otro."); setBooking(false); return; }
+            msg = body?.error || msg;
+          }
         } catch {}
         setFormErr("Error: " + msg);
         setBooking(false); return;
