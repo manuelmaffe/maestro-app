@@ -606,6 +606,7 @@ const CSS = () => (
     .acc-i{display:flex;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid var(--bl)}
     .acc-av{width:36px;height:36px;border-radius:var(--rs);display:flex;align-items:center;justify-content:center;font-weight:800;font-size:15px;color:white;flex-shrink:0}
     .acc-inf{flex:1;min-width:0}.acc-n{font-size:13px;font-weight:600}.acc-e{font-size:11px;color:var(--t3);font-family:var(--fm);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+    .acc-reconnect-btn{margin-top:4px;padding:3px 8px;background:#FFF3CD;border:1px solid #F59E0B;border-radius:6px;color:#92400E;font-size:11px;font-weight:600;cursor:pointer;font-family:var(--fm)}
     .cal-si{display:flex;align-items:center;gap:8px;padding:8px 0 8px 48px}
     .cal-d{width:8px;height:8px;border-radius:50%;flex-shrink:0}.cal-n{flex:1;font-size:12px;color:var(--t2)}
     .add-ab{display:flex;align-items:center;gap:10px;padding:12px 0;width:100%;border:none;background:none;color:var(--t3);font-size:13px;font-weight:500;font-family:var(--f);cursor:pointer}
@@ -885,6 +886,7 @@ const CSS = () => (
     .td-exp-info{flex:1;min-width:0}
     .td-exp-title{font-size:14px;font-weight:500;color:var(--t);letter-spacing:-.2px}
     .td-exp-title.done{text-decoration:line-through;color:var(--t4)}
+    .td-exp-desc{font-size:12px;color:var(--t3);margin-top:2px;line-height:1.4;font-family:var(--fm)}
     .td-exp-meta{display:flex;align-items:center;gap:8px;margin-top:3px;font-size:11px;color:var(--t3);font-family:var(--fm);flex-wrap:wrap}
     .td-exp-prio{font-weight:700}
     .td-exp-del{background:none;border:none;cursor:pointer;color:var(--t4);padding:4px;border-radius:4px;display:flex;align-items:center;opacity:0;transition:opacity .15s;flex-shrink:0}
@@ -1233,7 +1235,7 @@ function BookingPage({ linkId }) {
       {/* Header */}
       <div className="bk-page-header">
         <span style={{fontSize:18}}>🗓</span>
-        <span className="bk-page-brand">Maestro</span>
+        <span className="bk-page-brand">ElUno</span>
       </div>
 
       {step === "done" ? (
@@ -1512,7 +1514,7 @@ function BookingBuilder({ events, accounts, enabledCals, user, onFlash, onClose,
         <div className="bk-hero-icon">{I.share}</div>
         <div className="bk-hero-text">
           <div className="bk-hero-title">Link de agendamiento</div>
-          <div className="bk-hero-desc">Compartí este link y dejá que otros agenden en tus horarios disponibles. Maestro revisa todos tus calendarios.</div>
+          <div className="bk-hero-desc">Compartí este link y dejá que otros agenden en tus horarios disponibles. ElUno revisa todos tus calendarios.</div>
         </div>
       </div>
 
@@ -1768,7 +1770,7 @@ function AuthScreen() {
       <div className="auth-card">
         {/* Logo */}
         <div className="auth-logo">
-          <span className="auth-brand">Maestro</span>
+          <span className="auth-brand">ElUno</span>
           <span className="auth-tagline">Todos tus calendarios, un solo lugar.</span>
         </div>
 
@@ -2267,7 +2269,7 @@ function MaestroApp({ user, onLogout }){
   const tlPanelRef=useRef(null);
 
   const enabledCals=accounts.filter(a=>a.on).flatMap(a=>a.cals.filter(c=>c.on).map(c=>c.id));
-  const MAESTRO_CAL = {id:"maestro-tasks",name:"Maestro Tasks",color:"#6366F1",account:{id:"maestro",provider:"maestro",email:user?.email||"",name:"Maestro"}};
+  const MAESTRO_CAL = {id:"maestro-tasks",name:"ElUno Tasks",color:"#6366F1",account:{id:"maestro",provider:"maestro",email:user?.email||"",name:"ElUno"}};
   const getCal=id=>{
     if(id==="maestro-tasks") return MAESTRO_CAL;
     for(const a of accounts)for(const c of a.cals)if(c.id===id)return{...c,account:a};return null;
@@ -2473,8 +2475,6 @@ function MaestroApp({ user, onLogout }){
           fetchUserInfo(tokenResponse.access_token),
           fetchCalendars(tokenResponse.access_token),
         ]);
-        const newAcc={id:uid(),provider:"google",email:userInfo.email,name:userInfo.name||userInfo.email,on:true,accessToken:tokenResponse.access_token,cals:cals.map(mapGoogleCalendar)};
-        setAccounts(as=>[...as,newAcc]);
         const timeMin=new Date(); timeMin.setDate(timeMin.getDate()-30); timeMin.setHours(0,0,0,0);
         const timeMax=new Date(); timeMax.setDate(timeMax.getDate()+90);
         const newEvts=[];
@@ -2484,9 +2484,19 @@ function MaestroApp({ user, onLogout }){
             newEvts.push(...evts.map(e=>mapGoogleEvent(e,cal.id)));
           }catch(_){}
         }
-        setEvents(es=>[...es,...newEvts]);
+        // Si el email ya existe (reconectando token vencido) → actualizar en lugar de duplicar
+        const existing=accountsRef.current.find(a=>a.email===userInfo.email&&a.id!=="g1");
+        if(existing){
+          setAccounts(as=>as.map(a=>a.id===existing.id?{...a,accessToken:tokenResponse.access_token,tokenExpired:false,cals:cals.map(mapGoogleCalendar)}:a));
+          setEvents(es=>[...es.filter(e=>!existing.cals.some(c=>c.id===e.cid)),...newEvts]);
+          flash(`${userInfo.name||userInfo.email} reconectado`);
+        } else {
+          const newAcc={id:uid(),provider:"google",email:userInfo.email,name:userInfo.name||userInfo.email,on:true,accessToken:tokenResponse.access_token,cals:cals.map(mapGoogleCalendar)};
+          setAccounts(as=>[...as,newAcc]);
+          setEvents(es=>[...es,...newEvts]);
+          flash(`${userInfo.name||userInfo.email} conectado`);
+        }
         setSheet("accounts");
-        flash(`${userInfo.name||userInfo.email} conectado`);
       }catch(e){
         console.error("Error adding account:",e);
         flash("Error al conectar la cuenta");
@@ -2521,9 +2531,14 @@ function MaestroApp({ user, onLogout }){
       const allEvents = [];
 
       // ── Cuenta primaria (token fresco desde Supabase) ──
-      const { data: { session } } = await supabase.auth.getSession();
+      let { data: { session } } = await supabase.auth.getSession();
+      if (!session?.provider_token) {
+        // Intentar refrescar la sesión para obtener un nuevo provider_token
+        const { data: refreshed } = await supabase.auth.refreshSession();
+        session = refreshed?.session;
+      }
       const token = session?.provider_token;
-      if(!token){ flash("Sesión vencida. Recargá la página."); return; }
+      if(!token){ flash("Sesión vencida. Cerrá sesión y volvé a entrar."); return; }
       const userEmail = session.user.email;
       const userName = session.user.user_metadata?.full_name || userEmail;
       const cals = await fetchCalendars(token);
@@ -2550,8 +2565,8 @@ function MaestroApp({ user, onLogout }){
             } catch(_) {}
           }
         } catch(_) {
-          // Token vencido para esta cuenta — conservar metadata, omitir eventos
-          updatedSecondary.push(acc);
+          // Token vencido — conservar metadata, marcar para reconectar
+          updatedSecondary.push({...acc, tokenExpired: true});
         }
       }
 
@@ -2568,8 +2583,14 @@ function MaestroApp({ user, onLogout }){
     }
   },[]);
 
-  // Load on mount
-  useEffect(()=>{ syncCalendars(); },[]);
+  // Load on mount + auto-sync cada 40min + re-sync al volver a la tab
+  useEffect(()=>{
+    syncCalendars();
+    const interval = setInterval(()=>{ syncCalendars(); }, 40 * 60 * 1000);
+    const onVisible = () => { if (document.visibilityState === "visible") syncCalendars(); };
+    document.addEventListener("visibilitychange", onVisible);
+    return () => { clearInterval(interval); document.removeEventListener("visibilitychange", onVisible); };
+  },[]);
 
   // Scroll to now when timeline opens
   useEffect(()=>{
@@ -3212,7 +3233,7 @@ function MaestroApp({ user, onLogout }){
 
         {/* ── Desktop unified header (only on >=768) ── */}
         <div className="desk-header">
-          <div className="top-l"><span className="brand" onClick={goToday} style={{cursor:"pointer"}}>Maestro</span><span className="tag">{user?.name}</span></div>
+          <div className="top-l"><span className="brand" onClick={goToday} style={{cursor:"pointer"}}>ElUno</span><span className="tag">{user?.name}</span></div>
           <div className="top-r">
             <button className="ib" onClick={syncCalendars} title="Sincronizar calendarios" style={{opacity:calLoading?0.5:1}}>{I.sync}</button>
             <button className="ib add-btn" onClick={openNew}>{I.plus}</button>
@@ -3229,7 +3250,7 @@ function MaestroApp({ user, onLogout }){
         <div className="mobile-col">
         {/* Mobile-only top */}
         <div className="mob-top">
-          <div className="top-l"><span className="brand" onClick={goToday} style={{cursor:"pointer"}}>Maestro</span><span className="tag">{user?.name}</span></div>
+          <div className="top-l"><span className="brand" onClick={goToday} style={{cursor:"pointer"}}>ElUno</span><span className="tag">{user?.name}</span></div>
           <div className="top-r">
             <button className="ib" onClick={syncCalendars} title="Sincronizar" style={{opacity:calLoading?0.5:1}}>{I.sync}</button>
             <button className="ib add-btn" onClick={openNew}>{I.plus}</button>
@@ -3612,8 +3633,8 @@ function MaestroApp({ user, onLogout }){
                   <div className="maestro-task-badge">
                     <div className="mtb-icon">M</div>
                     <div className="mtb-info">
-                      <div className="mtb-name">Maestro Tasks</div>
-                      <div className="mtb-desc">Guardado en tu cuenta Maestro</div>
+                      <div className="mtb-name">ElUno Tasks</div>
+                      <div className="mtb-desc">Guardado en tu cuenta ElUno</div>
                     </div>
                   </div>
                 </div>
@@ -3735,7 +3756,7 @@ function MaestroApp({ user, onLogout }){
           <div className="sh">
             <div className="sh-grab"/><div className="sh-head"><span className="sh-h">Cuentas</span><button className="ib" onClick={()=>setSheet(null)}>{I.x}</button></div>
             <div className="sh-body">
-              {accounts.map(acc=>{const prov=PROVIDERS.find(p=>p.id===acc.provider);const isPrimary=acc.id==="g1";return(<div key={acc.id}><div className="acc-i"><div className="acc-av" style={{background:prov?.logoUrl?"#fff":prov?.bg||"#333",border:prov?.logoUrl?"1px solid #e5e7eb":"none"}}>{prov?.logoUrl?<img src={prov.logoUrl} style={{width:20,height:20}}/>:prov?.icon||acc.name[0]}</div><div className="acc-inf"><div className="acc-n">{acc.name}</div><div className="acc-e">{acc.email}</div></div><div style={{display:"flex",alignItems:"center",gap:6}}><Toggle checked={acc.on} onChange={e=>setAccounts(as=>as.map(a=>a.id===acc.id?{...a,on:e.target.checked}:a))} icons={false}/>{!isPrimary&&<button className="ib" style={{width:28,height:28,color:"var(--danger)"}} title="Eliminar cuenta" onClick={()=>{setAccounts(as=>as.filter(a=>a.id!==acc.id));setEvents(es=>es.filter(e=>e.isTask||!acc.cals.some(c=>c.id===e.cid)));flash("Cuenta eliminada")}}>{I.trash}</button>}</div></div>{acc.on&&acc.cals.map(cal=>(<div key={cal.id} className="cal-si"><div className="cal-d" style={{background:cal.color}}/><span className="cal-n">{cal.name}</span><Toggle checked={cal.on} onChange={e=>setAccounts(as=>as.map(a=>a.id===acc.id?{...a,cals:a.cals.map(c=>c.id===cal.id?{...c,on:e.target.checked}:c)}:a))} icons={false}/></div>))}</div>)})}
+              {accounts.map(acc=>{const prov=PROVIDERS.find(p=>p.id===acc.provider);const isPrimary=acc.id==="g1";return(<div key={acc.id}><div className="acc-i"><div className="acc-av" style={{background:prov?.logoUrl?"#fff":prov?.bg||"#333",border:prov?.logoUrl?"1px solid #e5e7eb":"none"}}>{prov?.logoUrl?<img src={prov.logoUrl} style={{width:20,height:20}}/>:prov?.icon||acc.name[0]}</div><div className="acc-inf"><div className="acc-n">{acc.name}</div><div className="acc-e">{acc.email}</div>{!isPrimary&&acc.tokenExpired&&<button className="acc-reconnect-btn" onClick={()=>addGoogleAccount()}>Token vencido · Reconectar</button>}</div><div style={{display:"flex",alignItems:"center",gap:6}}><Toggle checked={acc.on} onChange={e=>setAccounts(as=>as.map(a=>a.id===acc.id?{...a,on:e.target.checked}:a))} icons={false}/>{!isPrimary&&<button className="ib" style={{width:28,height:28,color:"var(--danger)"}} title="Eliminar cuenta" onClick={()=>{setAccounts(as=>as.filter(a=>a.id!==acc.id));setEvents(es=>es.filter(e=>e.isTask||!acc.cals.some(c=>c.id===e.cid)));flash("Cuenta eliminada")}}>{I.trash}</button>}</div></div>{acc.on&&!acc.tokenExpired&&acc.cals.map(cal=>(<div key={cal.id} className="cal-si"><div className="cal-d" style={{background:cal.color}}/><span className="cal-n">{cal.name}</span><Toggle checked={cal.on} onChange={e=>setAccounts(as=>as.map(a=>a.id===acc.id?{...a,cals:a.cals.map(c=>c.id===cal.id?{...c,on:e.target.checked}:c)}:a))} icons={false}/></div>))}</div>)})}
               <button className="add-ab" onClick={()=>{ if(userPlan==="free"&&accounts.length>=FREE_LIMITS.accounts){setUpgradeModal("accounts");return;} setSheet("addAcc"); }}><div className="add-ac">{I.plus}</div>Agregar cuenta</button>
             </div>
           </div>
@@ -3764,6 +3785,7 @@ function MaestroApp({ user, onLogout }){
               </div>
               <div className="td-exp-info">
                 <div className={`td-exp-title${td.done?" done":""}`}>{td.title}</div>
+                {td.description&&<div className="td-exp-desc">{td.description}</div>}
                 <div className="td-exp-meta">
                   {td.priority&&td.priority!=="none"&&<span className="td-exp-prio" style={{color:PRIO[td.priority]?.color}}>{PRIO[td.priority]?.label}</span>}
                   {td.estimated_minutes&&<span>{td.estimated_minutes}min</span>}
