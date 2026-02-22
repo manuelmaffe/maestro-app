@@ -1074,19 +1074,19 @@ function BookingPage({ linkId }) {
           slot_sm: selSlot.sm,
         }),
       });
-      const data = await res.json();
+      let data;
+      try { data = await res.json(); }
+      catch { setFormErr(`Error HTTP ${res.status}`); setBooking(false); return; }
       if (!data.ok) {
         if (data.error === "SLOT_TAKEN") setFormErr("Este horario ya fue reservado. Elegí otro.");
-        else setFormErr("Error al confirmar: " + data.error);
+        else setFormErr("Error: " + data.error);
         setBooking(false); return;
       }
       setResult(data);
       setStep("done");
-      // Refresh taken slots
-      const endMin = selSlot.sh*60 + selSlot.sm + (link?.duration || 30);
       setTakenSlots(ts => [...ts, { slot_date: selDate.toISOString().split("T")[0], slot_sh: selSlot.sh, slot_sm: selSlot.sm }]);
     } catch(e) {
-      setFormErr("Error de conexión. Intentá de nuevo.");
+      setFormErr("Error: " + (e.message || "conexión fallida"));
     }
     setBooking(false);
   };
@@ -1576,12 +1576,6 @@ function BookingBuilder({ events, accounts, enabledCals, user, onFlash, onClose,
             <span className="bk-link-url">{generated}</span>
             <button className="bk-link-copy" onClick={copyLink}>{I.copy} Copiar</button>
           </div>
-          <button className="btn-m" onClick={copyLink} style={{marginTop:8}}>
-            {I.copy} Copiar link
-          </button>
-          <button className="btn-g" onClick={()=>setGenerated(null)} style={{marginTop:4}}>
-            Regenerar
-          </button>
         </div>
       )}
     </div>
