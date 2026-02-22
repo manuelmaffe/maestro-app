@@ -66,7 +66,8 @@ Reglas:
 - todo_index es el índice (base 0) de la tarea en la lista original
 - Asigná las tareas de mayor prioridad primero (urgent > high > medium > low)
 - PRIORIZAR días de semana (lunes a viernes). Solo usar sábado/domingo si no hay alternativa entre semana
-- No superpongas tareas entre sí
+- AGRUPAR tareas en los mismos días: es preferible poner 2-3 tareas en un mismo día que distribuirlas en días distintos. Buscá días con bloques largos y llenálos antes de pasar al siguiente día
+- No superpongas tareas entre sí (respetá la duración estimada de cada una)
 - No uses un slot más corto que la duración estimada de la tarea
 - Si no hay slot adecuado para una tarea, omitila del array
 - La razón debe ser corta (máx 80 chars)`;

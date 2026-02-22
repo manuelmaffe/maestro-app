@@ -905,6 +905,17 @@ const CSS = () => (
     .sug-card-acts{display:flex;gap:6px}
     .sug-accept{flex:1;padding:8px;border-radius:100px;border:none;background:var(--t);color:var(--w);font-size:12px;font-weight:600;font-family:var(--fm);cursor:pointer;transition:opacity .12s}
     .sug-accept:hover{opacity:.85}
+    .sug-reroll{padding:8px 12px;border-radius:100px;border:1.5px solid var(--brd);background:var(--w);font-size:12px;font-weight:600;font-family:var(--fm);cursor:pointer;color:var(--t2);transition:all .12s}
+    .sug-reroll:hover{border-color:var(--t);color:var(--t)}
+    .sug-slot-picker{margin-top:4px}
+    .sug-slot-label{font-size:11px;font-weight:600;color:var(--t3);margin-bottom:8px;font-family:var(--fm)}
+    .sug-slot-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-bottom:8px}
+    .sug-slot-opt{padding:8px 6px;border-radius:8px;border:1.5px solid var(--brd);background:var(--w);cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:2px;transition:all .12s}
+    .sug-slot-opt:hover{border-color:var(--t);background:var(--hover)}
+    .sug-slot-day{font-size:10px;font-weight:700;color:var(--t3);font-family:var(--fm)}
+    .sug-slot-hr{font-size:13px;font-weight:700;color:var(--t);font-family:var(--fm)}
+    .sug-slot-cancel{width:100%;padding:7px;border-radius:8px;border:none;background:none;font-size:12px;color:var(--t4);cursor:pointer;font-family:var(--fm)}
+    .sug-slot-cancel:hover{color:var(--t3)}
     /* Apply all button */
     .sug-apply-all{width:100%;padding:14px;border-radius:100px;border:none;background:linear-gradient(135deg,#C89520,#a87318);color:#fff;font-size:14px;font-weight:700;font-family:var(--fm);cursor:pointer;margin-top:6px;box-shadow:0 4px 16px rgba(200,149,32,.35);transition:all .15s;letter-spacing:-.2px}
     .sug-apply-all:hover{transform:translateY(-1px);box-shadow:0 6px 22px rgba(200,149,32,.45)}
@@ -2231,6 +2242,9 @@ function MaestroApp({ user, onLogout }){
   const [suggestions,setSuggestions]=useState([]);
   const [suggestSheet,setSuggestSheet]=useState(false);
   const [suggestLoading,setSuggestLoading]=useState(false);
+  const [lastFreeSlots,setLastFreeSlots]=useState([]);
+  const [pickingSlot,setPickingSlot]=useState(null); // todo_id | null
+  const [rejectedSlots,setRejectedSlots]=useState({}); // {todo_id:[{date,sh,sm}]}
   const [upgradeModal,setUpgradeModal]=useState(null);
   const tlRef=useRef(null);
   const tlPanelRef=useRef(null);
@@ -2302,6 +2316,22 @@ function MaestroApp({ user, onLogout }){
     }catch{}
   },[accounts]);
 
+  // Sincronizar todos agendados → eventos del calendario
+  useEffect(()=>{
+    const todoIds=new Set(todos.map(t=>t.id));
+    setEvents(es=>{
+      const nonTodoEvts=es.filter(e=>!todoIds.has(e.id));
+      const todoEvts=todos
+        .filter(t=>t.scheduled_date&&t.scheduled_sh!=null&&!t.done)
+        .map(t=>{
+          const[yr,mn,dy]=t.scheduled_date.split("-").map(Number);
+          const endMin=t.scheduled_sh*60+(t.scheduled_sm||0)+(t.estimated_minutes||30);
+          return{id:t.id,title:t.title,date:new Date(yr,mn-1,dy),sh:t.scheduled_sh,sm:t.scheduled_sm||0,eh:Math.floor(endMin/60),em:endMin%60,isTask:true,done:false,allDay:false};
+        });
+      return[...nonTodoEvts,...todoEvts];
+    });
+  },[todos]);
+
   // Ref para acceder a las cuentas actuales dentro de syncCalendars sin dependencias reactivas
   const accountsRef = useRef(accounts);
   useEffect(()=>{ accountsRef.current = accounts; },[accounts]);
@@ -2354,7 +2384,10 @@ function MaestroApp({ user, onLogout }){
     setSuggestLoading(true);
     setSuggestSheet(true);
     setSuggestions([]);
+    setPickingSlot(null);
+    setRejectedSlots({});
     const freeSlots=getFreeSlots(events);
+    setLastFreeSlots(freeSlots);
     const today_str=`${YR}-${pad(MO+1)}-${pad(DA)}`;
     const tz=Intl.DateTimeFormat().resolvedOptions().timeZone;
     try{
@@ -2395,6 +2428,16 @@ function MaestroApp({ user, onLogout }){
     for(const sug of suggestions) await acceptSuggestion(sug);
     setSuggestSheet(false);
     flash("¡Semana organizada ✨");
+  };
+
+  const rejectAndPick=(sug)=>{
+    setRejectedSlots(r=>({...r,[sug.todo_id]:[...(r[sug.todo_id]||[]),{date:sug.date,sh:sug.sh,sm:sug.sm}]}));
+    setPickingSlot(sug.todo_id);
+  };
+
+  const pickAlternative=(todoId,slot)=>{
+    setSuggestions(ss=>ss.map(s=>s.todo_id===todoId?{...s,date:slot.date,sh:slot.sh,sm:slot.sm}:s));
+    setPickingSlot(null);
   };
 
   // Returns the access token for the account that owns a given calendar
@@ -3804,22 +3847,53 @@ function MaestroApp({ user, onLogout }){
                         if(!td) return null;
                         const endMin=(sug.sh*60+sug.sm)+(td.estimated_minutes||30);
                         const eh=Math.floor(endMin/60), em=endMin%60;
+                        const isPicking=pickingSlot===sug.todo_id;
+                        const rejected=rejectedSlots[sug.todo_id]||[];
+                        const altSlots=lastFreeSlots
+                          .filter(s=>s.duration_minutes>=(td.estimated_minutes||30))
+                          .filter(s=>!rejected.some(r=>r.date===s.date&&r.sh===s.sh))
+                          .filter(s=>!(s.date===sug.date&&s.sh===sug.sh))
+                          .slice(0,6);
                         return(
                           <div key={sug.todo_id} className="sug-card" style={{animationDelay:`${i*0.08}s`}}>
                             <div className="sug-card-badge" style={{background:PRIO[td.priority]?.color||"#6366F1"}}>
                               {PRIO[td.priority]?.label||"–"}
                             </div>
                             <div className="sug-card-title">{td.title}</div>
-                            <div className="sug-card-datetime">
-                              <span className="sug-card-date">{slugDate(sug.date)}</span>
-                              <span className="sug-card-time">{fmt(sug.sh,sug.sm)} – {fmt(eh,em)}</span>
-                              {td.estimated_minutes&&<span className="sug-card-dur">{td.estimated_minutes}min</span>}
-                            </div>
-                            {sug.reason&&<div className="sug-card-reason">"{sug.reason}"</div>}
-                            <div className="sug-card-acts">
-                              <button className="sug-accept" onClick={()=>acceptSuggestion(sug)}>Agendar</button>
-                              <button className="sug-dismiss" onClick={()=>setSuggestions(ss=>ss.filter(s=>s.todo_id!==sug.todo_id))}>Descartar</button>
-                            </div>
+                            {!isPicking&&(
+                              <>
+                                <div className="sug-card-datetime">
+                                  <span className="sug-card-date">{slugDate(sug.date)}</span>
+                                  <span className="sug-card-time">{fmt(sug.sh,sug.sm)} – {fmt(eh,em)}</span>
+                                  {td.estimated_minutes&&<span className="sug-card-dur">{td.estimated_minutes}min</span>}
+                                </div>
+                                {sug.reason&&<div className="sug-card-reason">"{sug.reason}"</div>}
+                                <div className="sug-card-acts">
+                                  <button className="sug-accept" onClick={()=>acceptSuggestion(sug)}>Agendar</button>
+                                  <button className="sug-reroll" onClick={()=>rejectAndPick(sug)}>Otro horario</button>
+                                  <button className="sug-dismiss" onClick={()=>setSuggestions(ss=>ss.filter(s=>s.todo_id!==sug.todo_id))}>✕</button>
+                                </div>
+                              </>
+                            )}
+                            {isPicking&&(
+                              <div className="sug-slot-picker">
+                                <div className="sug-slot-label">Elegí un horario alternativo:</div>
+                                {altSlots.length===0&&<div style={{fontSize:12,color:"var(--t3)",padding:"8px 0"}}>No hay más slots disponibles</div>}
+                                <div className="sug-slot-grid">
+                                  {altSlots.map((slot,j)=>{
+                                    const DAYS=["Dom","Lun","Mar","Mié","Jue","Vie","Sáb"];
+                                    const d=new Date(slot.date+"T00:00:00");
+                                    return(
+                                      <button key={j} className="sug-slot-opt" onClick={()=>pickAlternative(sug.todo_id,slot)}>
+                                        <span className="sug-slot-day">{DAYS[d.getDay()]} {d.getDate()}</span>
+                                        <span className="sug-slot-hr">{fmt(slot.sh,slot.sm)}</span>
+                                      </button>
+                                    );
+                                  })}
+                                </div>
+                                <button className="sug-slot-cancel" onClick={()=>setPickingSlot(null)}>Cancelar</button>
+                              </div>
+                            )}
                           </div>
                         );
                       })}
