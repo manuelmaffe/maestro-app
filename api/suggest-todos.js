@@ -65,6 +65,7 @@ Tu tarea: asignar cada tarea pendiente al bloque de tiempo libre más adecuado, 
 Reglas:
 - todo_index es el índice (base 0) de la tarea en la lista original
 - Asigná las tareas de mayor prioridad primero (urgent > high > medium > low)
+- PRIORIZAR días de semana (lunes a viernes). Solo usar sábado/domingo si no hay alternativa entre semana
 - No superpongas tareas entre sí
 - No uses un slot más corto que la duración estimada de la tarea
 - Si no hay slot adecuado para una tarea, omitila del array

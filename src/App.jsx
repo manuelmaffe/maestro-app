@@ -876,17 +876,39 @@ const CSS = () => (
     .td-suggest-btn:hover{border-color:#C89520;color:#C89520;background:rgba(200,149,32,0.05)}
     .td-empty{font-size:11px;color:var(--t4);padding:8px 8px;font-family:var(--fm)}
 
+    /* Suggestion loading */
+    @keyframes orbPulse{0%,100%{transform:scale(1);opacity:.9}50%{transform:scale(1.12);opacity:1}}
+    @keyframes ringRotate{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
+    @keyframes cardIn{from{opacity:0;transform:translateY(18px)}to{opacity:1;transform:translateY(0)}}
+    .sug-magic-loading{display:flex;flex-direction:column;align-items:center;padding:44px 20px;gap:16px}
+    .sug-magic-orb{width:76px;height:76px;border-radius:50%;background:linear-gradient(135deg,#C89520 0%,#6366F1 100%);display:flex;align-items:center;justify-content:center;animation:orbPulse 2s ease-in-out infinite;position:relative;box-shadow:0 8px 32px rgba(200,149,32,.35)}
+    .sug-orb-ring{position:absolute;border-radius:50%;border:2px solid rgba(200,149,32,.35);animation:ringRotate 3s linear infinite}
+    .sug-orb-ring{inset:-10px}
+    .sug-orb-ring-2{inset:-20px;border-color:rgba(99,102,241,.2);animation-duration:5s;animation-direction:reverse}
+    /* Week preview strip */
+    .sug-week-strip{display:flex;gap:3px;background:var(--bg);border-radius:10px;padding:10px 8px;margin-bottom:14px}
+    .sug-week-col{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;padding:6px 2px;border-radius:7px;transition:background .15s}
+    .sug-week-col.has-tasks{background:var(--w);box-shadow:0 1px 4px rgba(0,0,0,.07)}
+    .sug-week-day{font-size:9px;font-weight:700;color:var(--t4);font-family:var(--fm);text-transform:uppercase;letter-spacing:.4px}
+    .sug-week-num{font-size:14px;font-weight:700;color:var(--t2);font-family:var(--fm)}
+    .sug-week-dots{display:flex;flex-wrap:wrap;gap:2px;justify-content:center;min-height:8px}
+    .sug-week-dot{width:7px;height:7px;border-radius:50%}
     /* Suggestion cards */
-    .sug-card{padding:12px 14px;border-radius:var(--r);border:1px solid var(--bl);background:var(--w);margin-bottom:8px}
-    .sug-card-top{display:flex;align-items:flex-start;gap:10px;margin-bottom:10px}
-    .sug-card-icon{width:32px;height:32px;border-radius:8px;background:rgba(200,149,32,0.12);display:flex;align-items:center;justify-content:center;font-size:15px;flex-shrink:0}
-    .sug-card-info{flex:1;min-width:0}
-    .sug-card-title{font-size:13px;font-weight:600;color:var(--t);letter-spacing:-.2px}
-    .sug-card-when{font-size:11px;color:#C89520;font-weight:600;margin-top:2px}
-    .sug-card-reason{font-size:11px;color:var(--t3);margin-top:3px;line-height:1.4}
+    .sug-card{padding:14px;border-radius:var(--r);border:1px solid var(--bl);background:var(--w);margin-bottom:10px;animation:cardIn .35s ease both}
+    .sug-card-badge{display:inline-block;padding:2px 8px;border-radius:100px;font-size:10px;font-weight:700;color:#fff;font-family:var(--fm);margin-bottom:7px;letter-spacing:.3px}
+    .sug-card-title{font-size:14px;font-weight:700;color:var(--t);letter-spacing:-.3px;margin-bottom:8px}
+    .sug-card-datetime{display:flex;align-items:center;gap:8px;margin-bottom:7px;flex-wrap:wrap}
+    .sug-card-date{font-size:12px;font-weight:700;color:var(--t);background:var(--hover);padding:3px 8px;border-radius:6px;font-family:var(--fm)}
+    .sug-card-time{font-size:13px;font-weight:700;color:#C89520;font-family:var(--fm)}
+    .sug-card-dur{font-size:11px;color:var(--t4);font-family:var(--fm)}
+    .sug-card-reason{font-size:11px;color:var(--t3);margin-bottom:10px;font-style:italic;line-height:1.4}
     .sug-card-acts{display:flex;gap:6px}
-    .sug-accept{flex:1;padding:8px;border-radius:100px;border:none;background:var(--t);color:var(--w);font-size:12px;font-weight:600;font-family:var(--f);cursor:pointer;transition:opacity .12s}
+    .sug-accept{flex:1;padding:8px;border-radius:100px;border:none;background:var(--t);color:var(--w);font-size:12px;font-weight:600;font-family:var(--fm);cursor:pointer;transition:opacity .12s}
     .sug-accept:hover{opacity:.85}
+    /* Apply all button */
+    .sug-apply-all{width:100%;padding:14px;border-radius:100px;border:none;background:linear-gradient(135deg,#C89520,#a87318);color:#fff;font-size:14px;font-weight:700;font-family:var(--fm);cursor:pointer;margin-top:6px;box-shadow:0 4px 16px rgba(200,149,32,.35);transition:all .15s;letter-spacing:-.2px}
+    .sug-apply-all:hover{transform:translateY(-1px);box-shadow:0 6px 22px rgba(200,149,32,.45)}
+    .sug-apply-all:active{transform:translateY(0)}
     .sug-dismiss{padding:8px 14px;border-radius:100px;border:1px solid var(--brd);background:var(--w);color:var(--t2);font-size:12px;font-weight:500;font-family:var(--f);cursor:pointer;transition:all .12s}
     .sug-dismiss:hover{background:var(--hover)}
 
@@ -2151,23 +2173,31 @@ const DUR_OPTIONS = [15,30,45,60,90,120];
 function getFreeSlots(events, daysAhead=7) {
   const slots = [];
   const WORK_START = 8 * 60, WORK_END = 20 * 60;
+  const now = new Date();
   for (let i = 0; i < daysAhead; i++) {
     const date = new Date(); date.setDate(date.getDate() + i); date.setHours(0,0,0,0);
+    const dow = date.getDay();
+    const isWeekend = dow === 0 || dow === 6;
     const dateStr = `${date.getFullYear()}-${pad(date.getMonth()+1)}-${pad(date.getDate())}`;
+    // Para hoy, no ofrecer slots que ya pasaron (+ 30min buffer)
+    const nowMins = i === 0 ? now.getHours()*60 + now.getMinutes() + 30 : 0;
+    const effectiveStart = Math.max(WORK_START, nowMins);
+    if (effectiveStart >= WORK_END) continue;
     const dayEvts = events
       .filter(e => !e.isTask && !e.allDay && same(e.date, date))
       .sort((a,b) => (a.sh*60+a.sm) - (b.sh*60+b.sm));
-    let cursor = WORK_START;
+    let cursor = effectiveStart;
     for (const e of dayEvts) {
       const s = e.sh*60+e.sm, en = e.eh*60+e.em;
       if (s > cursor && s - cursor >= 15)
-        slots.push({ date:dateStr, sh:Math.floor(cursor/60), sm:cursor%60, eh:Math.floor(s/60), em:s%60, duration_minutes:s-cursor });
+        slots.push({ date:dateStr, sh:Math.floor(cursor/60), sm:cursor%60, eh:Math.floor(s/60), em:s%60, duration_minutes:s-cursor, isWeekend });
       cursor = Math.max(cursor, en);
     }
     if (WORK_END > cursor && WORK_END - cursor >= 15)
-      slots.push({ date:dateStr, sh:Math.floor(cursor/60), sm:cursor%60, eh:Math.floor(WORK_END/60), em:WORK_END%60, duration_minutes:WORK_END-cursor });
+      slots.push({ date:dateStr, sh:Math.floor(cursor/60), sm:cursor%60, eh:Math.floor(WORK_END/60), em:WORK_END%60, duration_minutes:WORK_END-cursor, isWeekend });
   }
-  return slots;
+  // Slots de días de semana primero
+  return slots.sort((a,b) => (a.isWeekend?1:0) - (b.isWeekend?1:0));
 }
 
 function MaestroApp({ user, onLogout }){
@@ -2359,6 +2389,12 @@ function MaestroApp({ user, onLogout }){
     setTodos(ts=>ts.map(t=>t.id===sug.todo_id?{...t,scheduled_date:sug.date,scheduled_sh:sug.sh,scheduled_sm:sug.sm}:t));
     setSuggestions(ss=>ss.filter(s=>s.todo_id!==sug.todo_id));
     flash(`"${td.title}" agendado`);
+  };
+
+  const acceptAll=async()=>{
+    for(const sug of suggestions) await acceptSuggestion(sug);
+    setSuggestSheet(false);
+    flash("¡Semana organizada ✨");
   };
 
   // Returns the access token for the account that owns a given calendar
@@ -3701,55 +3737,104 @@ function MaestroApp({ user, onLogout }){
         )}
 
         {/* ── Suggestions sheet ── */}
-        {suggestSheet&&(
-          <>
-            <div className="ov-upgrade" onClick={()=>setSuggestSheet(false)}/>
-            <div className="sh">
-              <div className="sh-grab"/>
-              <div className="sh-head">
-                <span className="sh-h">✨ Sugerencias de agenda</span>
-                <button className="ib" onClick={()=>setSuggestSheet(false)}>{I.x}</button>
-              </div>
-              <div className="sh-body">
-                {suggestLoading&&(
-                  <div style={{textAlign:"center",padding:"40px 0",color:"var(--t3)"}}>
-                    <div style={{fontSize:28,marginBottom:12}}>🤔</div>
-                    <div style={{fontSize:14,fontWeight:600,color:"var(--t2)",marginBottom:6}}>Analizando tu agenda...</div>
-                    <div style={{fontSize:12,color:"var(--t3)"}}>Buscando los mejores momentos para tus pendientes</div>
-                  </div>
-                )}
-                {!suggestLoading&&suggestions.length===0&&(
-                  <div style={{textAlign:"center",padding:"40px 0",color:"var(--t3)"}}>
-                    <div style={{fontSize:28,marginBottom:12}}>📭</div>
-                    <div style={{fontSize:13}}>No se encontraron sugerencias.<br/>Revisá que tenés slots libres en los próximos días.</div>
-                  </div>
-                )}
-                {!suggestLoading&&suggestions.map(sug=>{
-                  const td=todos.find(t=>t.id===sug.todo_id);
-                  if(!td) return null;
-                  const d=new Date(sug.date+"T12:00");
-                  const dateLabel=d.toLocaleDateString("es-AR",{weekday:"long",day:"numeric",month:"long"});
-                  return(
-                    <div key={sug.todo_id} className="sug-card">
-                      <div className="sug-card-top">
-                        <div className="sug-card-icon">✨</div>
-                        <div className="sug-card-info">
-                          <div className="sug-card-title">{td.title}</div>
-                          <div className="sug-card-when">{dateLabel} · {fmt(sug.sh,sug.sm)}{td.estimated_minutes?` (${td.estimated_minutes}min)`:""}</div>
-                          {sug.reason&&<div className="sug-card-reason">{sug.reason}</div>}
-                        </div>
+        {suggestSheet&&(()=>{
+          const DAY_NAMES=["D","L","M","X","J","V","S"];
+          const slugDate=(ds)=>{
+            const d=new Date(ds+"T00:00:00"), todayD=new Date(); todayD.setHours(0,0,0,0);
+            const diff=Math.round((d-todayD)/86400000);
+            if(diff===0) return "Hoy";
+            if(diff===1) return "Mañana";
+            const DAYS=["Dom","Lun","Mar","Mié","Jue","Vie","Sáb"];
+            const MONS=["ene","feb","mar","abr","may","jun","jul","ago","sep","oct","nov","dic"];
+            return `${DAYS[d.getDay()]} ${d.getDate()} ${MONS[d.getMonth()]}`;
+          };
+          return(
+            <>
+              <div className="ov-upgrade" onClick={()=>setSuggestSheet(false)}/>
+              <div className="sh">
+                <div className="sh-grab"/>
+                <div className="sh-head">
+                  <span className="sh-h">✨ Organizar semana</span>
+                  <button className="ib" onClick={()=>setSuggestSheet(false)}>{I.x}</button>
+                </div>
+                <div className="sh-body">
+                  {suggestLoading&&(
+                    <div className="sug-magic-loading">
+                      <div className="sug-magic-orb">
+                        <div className="sug-orb-ring"/>
+                        <div className="sug-orb-ring sug-orb-ring-2"/>
+                        <span style={{fontSize:30,zIndex:1}}>✨</span>
                       </div>
-                      <div className="sug-card-acts">
-                        <button className="sug-accept" onClick={()=>acceptSuggestion(sug)}>Agendar</button>
-                        <button className="sug-dismiss" onClick={()=>setSuggestions(ss=>ss.filter(s=>s.todo_id!==sug.todo_id))}>Descartar</button>
-                      </div>
+                      <div style={{fontWeight:700,fontSize:14,color:"var(--t)"}}>Analizando tu semana...</div>
+                      <div style={{fontSize:12,color:"var(--t3)",textAlign:"center",lineHeight:1.5}}>Buscando los mejores momentos<br/>para cada pendiente</div>
                     </div>
-                  );
-                })}
+                  )}
+                  {!suggestLoading&&suggestions.length===0&&(
+                    <div style={{textAlign:"center",padding:"40px 0"}}>
+                      <div style={{fontSize:32,marginBottom:12}}>📭</div>
+                      <div style={{fontSize:13,color:"var(--t3)"}}>No se encontraron sugerencias.<br/>Revisá que tenés slots libres en los próximos días.</div>
+                    </div>
+                  )}
+                  {!suggestLoading&&suggestions.length>0&&(
+                    <>
+                      {/* Vista previa semanal */}
+                      <div className="sug-week-strip">
+                        {Array.from({length:7},(_,i)=>{
+                          const d=new Date(); d.setDate(d.getDate()+i); d.setHours(0,0,0,0);
+                          const ds=`${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+                          const daySugs=suggestions.filter(s=>s.date===ds);
+                          return(
+                            <div key={i} className={`sug-week-col${daySugs.length?" has-tasks":""}`}>
+                              <div className="sug-week-day">{DAY_NAMES[d.getDay()]}</div>
+                              <div className="sug-week-num">{d.getDate()}</div>
+                              <div className="sug-week-dots">
+                                {daySugs.map((s,j)=>{
+                                  const td=todos.find(t=>t.id===s.todo_id);
+                                  return <div key={j} className="sug-week-dot" style={{background:PRIO[td?.priority]?.color||"#6366F1"}} title={td?.title}/>;
+                                })}
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+
+                      {/* Tarjetas */}
+                      {suggestions.map((sug,i)=>{
+                        const td=todos.find(t=>t.id===sug.todo_id);
+                        if(!td) return null;
+                        const endMin=(sug.sh*60+sug.sm)+(td.estimated_minutes||30);
+                        const eh=Math.floor(endMin/60), em=endMin%60;
+                        return(
+                          <div key={sug.todo_id} className="sug-card" style={{animationDelay:`${i*0.08}s`}}>
+                            <div className="sug-card-badge" style={{background:PRIO[td.priority]?.color||"#6366F1"}}>
+                              {PRIO[td.priority]?.label||"–"}
+                            </div>
+                            <div className="sug-card-title">{td.title}</div>
+                            <div className="sug-card-datetime">
+                              <span className="sug-card-date">{slugDate(sug.date)}</span>
+                              <span className="sug-card-time">{fmt(sug.sh,sug.sm)} – {fmt(eh,em)}</span>
+                              {td.estimated_minutes&&<span className="sug-card-dur">{td.estimated_minutes}min</span>}
+                            </div>
+                            {sug.reason&&<div className="sug-card-reason">"{sug.reason}"</div>}
+                            <div className="sug-card-acts">
+                              <button className="sug-accept" onClick={()=>acceptSuggestion(sug)}>Agendar</button>
+                              <button className="sug-dismiss" onClick={()=>setSuggestions(ss=>ss.filter(s=>s.todo_id!==sug.todo_id))}>Descartar</button>
+                            </div>
+                          </div>
+                        );
+                      })}
+
+                      {/* Aplicar todo */}
+                      <button className="sug-apply-all" onClick={acceptAll}>
+                        ✨ Aplicar toda la agenda
+                      </button>
+                    </>
+                  )}
+                </div>
               </div>
-            </div>
-          </>
-        )}
+            </>
+          );
+        })()}
       </div>
     </>
   );
