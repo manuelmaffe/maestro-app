@@ -39,6 +39,7 @@ const dimF = (y,m) => new Date(y,m+1,0).getDate();
 const fdow = (y,m) => { const d=new Date(y,m,1).getDay(); return d===0?6:d-1; };
 const same = (a,b) => a.getFullYear()===b.getFullYear()&&a.getMonth()===b.getMonth()&&a.getDate()===b.getDate();
 const uid = () => Math.random().toString(36).substr(2,9);
+const FREE_LIMITS = { accounts: 2, bookingLinks: 1, tasksPerWeek: 5 };
 const today = new Date();
 const YR=today.getFullYear(), MO=today.getMonth(), DA=today.getDate();
 
@@ -1871,6 +1872,44 @@ function layoutEvents(evts){
   return res;
 }
 
+const UPGRADE_COPY = {
+  accounts:     { title: "Límite de cuentas alcanzado",        desc: "El plan Free permite hasta 2 cuentas vinculadas." },
+  bookingLinks: { title: "Límite de links alcanzado",          desc: "El plan Free permite hasta 1 link de agendamiento activo." },
+  tasks:        { title: "Límite de tareas semanales alcanzado", desc: "El plan Free permite hasta 5 tareas nuevas por semana." },
+};
+function UpgradeModal({ reason, onClose }) {
+  const copy = UPGRADE_COPY[reason] || {};
+  return (
+    <>
+      <div className="ov" onClick={onClose}/>
+      <div className="sh">
+        <div className="sh-grab"/>
+        <div className="sh-head">
+          <span className="sh-h">Plan Individual</span>
+          <button className="ib" onClick={onClose}>{I.x}</button>
+        </div>
+        <div className="sh-body">
+          <div style={{textAlign:"center",marginBottom:24}}>
+            <div style={{width:56,height:56,borderRadius:16,background:"rgba(200,149,32,0.12)",margin:"0 auto 14px",display:"flex",alignItems:"center",justifyContent:"center",fontSize:26}}>⚡</div>
+            <div style={{fontSize:17,fontWeight:700,color:"var(--t)",letterSpacing:"-0.3px",marginBottom:8}}>{copy.title}</div>
+            <div style={{fontSize:13,color:"var(--t3)",lineHeight:1.55}}>{copy.desc}</div>
+          </div>
+          <div style={{background:"var(--bg)",borderRadius:"var(--r)",padding:"14px 16px",marginBottom:20,border:"1px solid var(--bl)"}}>
+            <div style={{fontSize:10,fontWeight:700,color:"var(--t3)",textTransform:"uppercase",letterSpacing:1,marginBottom:12}}>Plan Individual incluye</div>
+            {["Cuentas ilimitadas","Links de agendamiento ilimitados","Tareas ilimitadas","Soporte prioritario"].map(b=>(
+              <div key={b} style={{display:"flex",alignItems:"center",gap:8,marginBottom:8,fontSize:13,color:"var(--t2)"}}>
+                <span style={{color:"#C89520",fontWeight:700,fontSize:15}}>✓</span>{b}
+              </div>
+            ))}
+          </div>
+          <button className="btn-m" onClick={()=>{window.open("https://maestro-app-omega.vercel.app","_blank");onClose();}}>Ver plan Individual</button>
+          <button className="btn-g" onClick={onClose}>Más tarde</button>
+        </div>
+      </div>
+    </>
+  );
+}
+
 function MaestroApp({ user, onLogout }){
   // Restaurar cuentas secundarias desde localStorage (la primaria la recrea syncCalendars)
   const [accounts,setAccounts]=useState(()=>{
@@ -1894,6 +1933,8 @@ function MaestroApp({ user, onLogout }){
   const [bookingLinks,setBookingLinks]=useState([]);
   const [bookingLinksOpen,setBookingLinksOpen]=useState(true);
   const [editLink,setEditLink]=useState(null);
+  const [userPlan,setUserPlan]=useState("free");
+  const [upgradeModal,setUpgradeModal]=useState(null);
   const tlRef=useRef(null);
   const tlPanelRef=useRef(null);
 
@@ -1977,6 +2018,11 @@ function MaestroApp({ user, onLogout }){
     setBookingLinks(data||[]);
   },[]);
   useEffect(()=>{loadBookingLinks();},[loadBookingLinks]);
+
+  useEffect(()=>{
+    supabase.from("profiles").select("plan").eq("id",user.id).single()
+      .then(({data})=>{ if(data?.plan) setUserPlan(data.plan); });
+  },[user.id]);
 
   // Returns the access token for the account that owns a given calendar
   const getTokenForCal=useCallback((calId)=>{
@@ -2373,6 +2419,12 @@ function MaestroApp({ user, onLogout }){
         await supabase.from("tasks").update(row).eq("id",form.id);
         setEvents(es=>es.map(e=>e.id===form.id?{...e,...d}:e));flash("Actualizado");
       } else {
+        if(userPlan==="free"){
+          const weekStart=new Date(d.date);weekStart.setDate(weekStart.getDate()-((weekStart.getDay()+6)%7));weekStart.setHours(0,0,0,0);
+          const weekEnd=new Date(weekStart);weekEnd.setDate(weekStart.getDate()+7);
+          const tasksThisWeek=events.filter(e=>e.isTask&&!e.done&&e.date>=weekStart&&e.date<weekEnd).length;
+          if(tasksThisWeek>=FREE_LIMITS.tasksPerWeek){setUpgradeModal("tasks");return;}
+        }
         const {data,error}=await supabase.from("tasks").insert(row).select().single();
         if(error){flash("Error al guardar");return;}
         setEvents(es=>[...es,{...d,id:data.id}]);flash("Creado");
@@ -2779,7 +2831,7 @@ function MaestroApp({ user, onLogout }){
             <button className="bk-sidebar-hdr" onClick={()=>setBookingLinksOpen(o=>!o)}>
               <span className="bk-sidebar-hdr-icon">{bookingLinksOpen?"▾":"▸"}</span>
               <span className="bk-sidebar-hdr-label">Links de agendamiento</span>
-              <span className="bk-sidebar-add" onClick={e=>{e.stopPropagation();setSheet("new");setForm(f=>({...f,isBooking:true}))}}>{I.plus}</span>
+              <span className="bk-sidebar-add" onClick={e=>{e.stopPropagation();if(userPlan==="free"&&bookingLinks.length>=FREE_LIMITS.bookingLinks){setUpgradeModal("bookingLinks");return;}setEditLink(null);setSheet("new");setForm(f=>({...f,isBooking:true}))}}>{I.plus}</span>
             </button>
             {bookingLinksOpen&&(
               <div className="bk-sidebar-list">
@@ -3199,7 +3251,7 @@ function MaestroApp({ user, onLogout }){
             <div className="sh-grab"/><div className="sh-head"><span className="sh-h">Cuentas</span><button className="ib" onClick={()=>setSheet(null)}>{I.x}</button></div>
             <div className="sh-body">
               {accounts.map(acc=>{const prov=PROVIDERS.find(p=>p.id===acc.provider);const isPrimary=acc.id==="g1";return(<div key={acc.id}><div className="acc-i"><div className="acc-av" style={{background:prov?.logoUrl?"#fff":prov?.bg||"#333",border:prov?.logoUrl?"1px solid #e5e7eb":"none"}}>{prov?.logoUrl?<img src={prov.logoUrl} style={{width:20,height:20}}/>:prov?.icon||acc.name[0]}</div><div className="acc-inf"><div className="acc-n">{acc.name}</div><div className="acc-e">{acc.email}</div></div><div style={{display:"flex",alignItems:"center",gap:6}}><Toggle checked={acc.on} onChange={e=>setAccounts(as=>as.map(a=>a.id===acc.id?{...a,on:e.target.checked}:a))} icons={false}/>{!isPrimary&&<button className="ib" style={{width:28,height:28,color:"var(--danger)"}} title="Eliminar cuenta" onClick={()=>{setAccounts(as=>as.filter(a=>a.id!==acc.id));setEvents(es=>es.filter(e=>e.isTask||!acc.cals.some(c=>c.id===e.cid)));flash("Cuenta eliminada")}}>{I.trash}</button>}</div></div>{acc.on&&acc.cals.map(cal=>(<div key={cal.id} className="cal-si"><div className="cal-d" style={{background:cal.color}}/><span className="cal-n">{cal.name}</span><Toggle checked={cal.on} onChange={e=>setAccounts(as=>as.map(a=>a.id===acc.id?{...a,cals:a.cals.map(c=>c.id===cal.id?{...c,on:e.target.checked}:c)}:a))} icons={false}/></div>))}</div>)})}
-              <button className="add-ab" onClick={()=>setSheet("addAcc")}><div className="add-ac">{I.plus}</div>Agregar cuenta</button>
+              <button className="add-ab" onClick={()=>{ if(userPlan==="free"&&accounts.length>=FREE_LIMITS.accounts){setUpgradeModal("accounts");return;} setSheet("addAcc"); }}><div className="add-ac">{I.plus}</div>Agregar cuenta</button>
             </div>
           </div>
         )}
@@ -3213,6 +3265,8 @@ function MaestroApp({ user, onLogout }){
             </div>
           </div>
         )}
+
+        {upgradeModal&&<UpgradeModal reason={upgradeModal} onClose={()=>setUpgradeModal(null)}/>}
       </div>
     </>
   );
