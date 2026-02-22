@@ -1890,7 +1890,7 @@ function MaestroApp({ user, onLogout }){
   const [userMenu,setUserMenu]=useState(false);
   const [tlView,setTlView]=useState(()=>localStorage.getItem("maestro_tlview")||"3day");
   const [bookingLinks,setBookingLinks]=useState([]);
-  const [bookingLinksOpen,setBookingLinksOpen]=useState(false);
+  const [bookingLinksOpen,setBookingLinksOpen]=useState(true);
   const [editLink,setEditLink]=useState(null);
   const tlRef=useRef(null);
   const tlPanelRef=useRef(null);
