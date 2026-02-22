@@ -874,6 +874,8 @@ const CSS = () => (
     .td-check.done{color:var(--ok);opacity:1}
     .td-suggest-btn{width:calc(100% - 16px);margin:4px 8px;padding:8px;border-radius:100px;border:1.5px dashed var(--brd);background:none;cursor:pointer;font-family:var(--f);font-size:12px;font-weight:600;color:var(--t3);display:flex;align-items:center;justify-content:center;gap:6px;transition:all .15s}
     .td-suggest-btn:hover{border-color:#C89520;color:#C89520;background:rgba(200,149,32,0.05)}
+    .td-done-hdr{display:flex;align-items:center;gap:6px;width:100%;background:none;border:none;cursor:pointer;padding:6px 16px;font-family:var(--fm);font-size:11px;font-weight:600;color:var(--t4);margin-top:4px}
+    .td-done-hdr:hover{color:var(--t3)}
     .td-empty{font-size:11px;color:var(--t4);padding:8px 8px;font-family:var(--fm)}
 
     /* Suggestion loading */
@@ -2237,6 +2239,7 @@ function MaestroApp({ user, onLogout }){
   const [userPlan,setUserPlan]=useState("free");
   const [todos,setTodos]=useState([]);
   const [todosOpen,setTodosOpen]=useState(true);
+  const [doneOpen,setDoneOpen]=useState(false);
   const [todoSheet,setTodoSheet]=useState(null); // null | "new" | {todo object}
   const [todoForm,setTodoForm]=useState({});
   const [suggestions,setSuggestions]=useState([]);
@@ -2322,11 +2325,11 @@ function MaestroApp({ user, onLogout }){
     setEvents(es=>{
       const nonTodoEvts=es.filter(e=>!todoIds.has(e.id));
       const todoEvts=todos
-        .filter(t=>t.scheduled_date&&t.scheduled_sh!=null&&!t.done)
+        .filter(t=>t.scheduled_date&&t.scheduled_sh!=null)
         .map(t=>{
           const[yr,mn,dy]=t.scheduled_date.split("-").map(Number);
           const endMin=t.scheduled_sh*60+(t.scheduled_sm||0)+(t.estimated_minutes||30);
-          return{id:t.id,title:t.title,date:new Date(yr,mn-1,dy),sh:t.scheduled_sh,sm:t.scheduled_sm||0,eh:Math.floor(endMin/60),em:endMin%60,isTask:true,done:false,allDay:false};
+          return{id:t.id,title:t.title,date:new Date(yr,mn-1,dy),sh:t.scheduled_sh,sm:t.scheduled_sm||0,eh:Math.floor(endMin/60),em:endMin%60,isTask:true,done:t.done,allDay:false};
         });
       return[...nonTodoEvts,...todoEvts];
     });
@@ -3296,7 +3299,7 @@ function MaestroApp({ user, onLogout }){
             </button>
             {todosOpen&&(
               <div className="td-list">
-                {todos.filter(t=>!t.done).length===0&&<div className="td-empty">Sin pendientes</div>}
+                {todos.filter(t=>!t.done).length===0&&todos.filter(t=>t.done).length===0&&<div className="td-empty">Sin pendientes</div>}
                 {PRIO_ORDER.map(p=>{
                   const group=todos.filter(t=>!t.done&&t.priority===p);
                   if(!group.length) return null;
@@ -3321,6 +3324,25 @@ function MaestroApp({ user, onLogout }){
                 })}
                 {todos.filter(t=>!t.done).length>0&&(
                   <button className="td-suggest-btn" onClick={suggestTodos}>✨ Sugerir agenda</button>
+                )}
+                {/* Completadas */}
+                {todos.filter(t=>t.done).length>0&&(
+                  <>
+                    <button className="td-done-hdr" onClick={()=>setDoneOpen(o=>!o)}>
+                      <span className="td-hdr-icon">{doneOpen?"▾":"▸"}</span>
+                      <span>Completadas ({todos.filter(t=>t.done).length})</span>
+                    </button>
+                    {doneOpen&&todos.filter(t=>t.done).map(td=>(
+                      <div key={td.id} className="td-item" onClick={()=>{setTodoForm({...td});setTodoSheet(td);}}>
+                        <div className="td-dot" style={{background:"var(--t4)"}}/>
+                        <div className="td-info">
+                          <div className="td-title done">{td.title}</div>
+                          {td.scheduled_date&&<div className="td-meta"><span className="td-sched" style={{opacity:.6}}>{new Date(td.scheduled_date+"T12:00").toLocaleDateString("es-AR",{weekday:"short",day:"numeric",month:"short"})}</span></div>}
+                        </div>
+                        <button className="td-check done" onClick={e=>{e.stopPropagation();toggleTodoDone(td);}}>{I.check}</button>
+                      </div>
+                    ))}
+                  </>
                 )}
               </div>
             )}
