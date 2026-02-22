@@ -1058,30 +1058,35 @@ function BookingPage({ linkId }) {
     if (!form.email.trim() || !form.email.includes("@")) { setFormErr("Ingresá un email válido"); return; }
     setFormErr(""); setBooking(true);
     try {
-      const { data, error } = await supabase.functions.invoke("book-slot", {
-        body: {
-          link_id: linkId,
-          guest_name: form.name.trim(),
-          guest_email: form.email.trim(),
-          slot_date: selDate.toISOString().split("T")[0],
-          slot_sh: selSlot.sh,
-          slot_sm: selSlot.sm,
-        },
-      });
-      if (error) {
-        let msg = error.message || "Error al confirmar";
-        try {
-          const text = await error.context?.text();
-          if (text) {
-            const body = JSON.parse(text);
-            if (body?.error === "SLOT_TAKEN") { setFormErr("Este horario ya fue reservado. Elegí otro."); setBooking(false); return; }
-            msg = body?.error || msg;
-          }
-        } catch {}
-        setFormErr("Error: " + msg);
+      const res = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/book-slot`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+            "apikey": import.meta.env.VITE_SUPABASE_ANON_KEY,
+          },
+          body: JSON.stringify({
+            link_id: linkId,
+            guest_name: form.name.trim(),
+            guest_email: form.email.trim(),
+            slot_date: selDate.toISOString().split("T")[0],
+            slot_sh: selSlot.sh,
+            slot_sm: selSlot.sm,
+          }),
+        }
+      );
+      const text = await res.text();
+      let body;
+      try { body = JSON.parse(text); } catch { body = null; }
+      if (!res.ok || !body?.ok) {
+        const errMsg = body?.error || text.slice(0, 200) || `HTTP ${res.status}`;
+        if (errMsg === "SLOT_TAKEN") { setFormErr("Este horario ya fue reservado. Elegí otro."); setBooking(false); return; }
+        setFormErr("Error: " + errMsg);
         setBooking(false); return;
       }
-      setResult(data);
+      setResult(body);
       setStep("done");
       setTakenSlots(ts => [...ts, { slot_date: selDate.toISOString().split("T")[0], slot_sh: selSlot.sh, slot_sm: selSlot.sm }]);
     } catch(e) {
