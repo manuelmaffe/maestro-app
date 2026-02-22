@@ -3054,7 +3054,7 @@ function MaestroApp({ user, onLogout }){
                     {I.task} Tarea
                   </button>
                   <button className={`type-btn ${form.isBooking?"act":""}`}
-                    onClick={()=>setForm(f=>({...f,isTask:false,isBooking:true}))}>
+                    onClick={()=>{ if(userPlan==="free"&&bookingLinks.length>=FREE_LIMITS.bookingLinks&&!editLink){setUpgradeModal("bookingLinks");return;} setForm(f=>({...f,isTask:false,isBooking:true})); }}>
                     {I.share} Link
                   </button>
                 </div>
