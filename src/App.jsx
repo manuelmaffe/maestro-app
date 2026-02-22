@@ -1058,28 +1058,24 @@ function BookingPage({ linkId }) {
     if (!form.email.trim() || !form.email.includes("@")) { setFormErr("Ingresá un email válido"); return; }
     setFormErr(""); setBooking(true);
     try {
-      const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/book-slot`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "apikey": import.meta.env.VITE_SUPABASE_ANON_KEY,
-          "Authorization": `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
-        },
-        body: JSON.stringify({
+      const { data, error } = await supabase.functions.invoke("book-slot", {
+        body: {
           link_id: linkId,
           guest_name: form.name.trim(),
           guest_email: form.email.trim(),
           slot_date: selDate.toISOString().split("T")[0],
           slot_sh: selSlot.sh,
           slot_sm: selSlot.sm,
-        }),
+        },
       });
-      let data;
-      try { data = await res.json(); }
-      catch { setFormErr(`Error HTTP ${res.status}`); setBooking(false); return; }
-      if (!data.ok) {
-        if (data.error === "SLOT_TAKEN") setFormErr("Este horario ya fue reservado. Elegí otro.");
-        else setFormErr("Error: " + data.error);
+      if (error) {
+        let msg = error.message || "Error al confirmar";
+        try {
+          const body = await error.context?.json();
+          if (body?.error === "SLOT_TAKEN") { setFormErr("Este horario ya fue reservado. Elegí otro."); setBooking(false); return; }
+          msg = body?.error || msg;
+        } catch {}
+        setFormErr("Error: " + msg);
         setBooking(false); return;
       }
       setResult(data);
