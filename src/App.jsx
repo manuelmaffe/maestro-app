@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { useGoogleLogin } from "@react-oauth/google";
 import { fetchUserInfo, fetchCalendars, fetchEvents, mapGoogleCalendar, mapGoogleEvent, createEvent, updateEvent, deleteEvent } from "./googleCalendar.js";
-import { supabase } from "./supabase.js";
+import { supabase, SUPABASE_URL, SUPABASE_ANON_KEY } from "./supabase.js";
 
 function Toggle({ checked, onChange, disabled }) {
   return (
@@ -1059,13 +1059,13 @@ function BookingPage({ linkId }) {
     setFormErr(""); setBooking(true);
     try {
       const res = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/book-slot`,
+        `${SUPABASE_URL}/functions/v1/book-slot`,
         {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            "Authorization": `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
-            "apikey": import.meta.env.VITE_SUPABASE_ANON_KEY,
+            "Authorization": `Bearer ${SUPABASE_ANON_KEY}`,
+            "apikey": SUPABASE_ANON_KEY,
           },
           body: JSON.stringify({
             link_id: linkId,
