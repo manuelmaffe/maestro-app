@@ -1599,7 +1599,8 @@ function authMsg(msg){ return AUTH_ERRORS[msg] || msg; }
 
 // ── Auth Screen ──
 function AuthScreen() {
-  const [mode, setMode] = useState("login"); // login | register | forgot
+  const initMode = new URLSearchParams(window.location.search).get("mode") === "register" ? "register" : "login";
+  const [mode, setMode] = useState(initMode); // login | register | forgot
   const [email, setEmail] = useState("");
   const [pass, setPass] = useState("");
   const [name, setName] = useState("");
