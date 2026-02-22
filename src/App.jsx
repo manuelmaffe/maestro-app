@@ -851,6 +851,45 @@ const CSS = () => (
     .dp-cell.dp-oth{color:var(--t4);cursor:default}
     .dp-cell.dp-oth:hover{background:transparent}
 
+    /* ── Pendientes (Todos) ── */
+    .td-section{border-top:1px solid var(--bl);padding:4px 0}
+    .td-hdr{display:flex;align-items:center;gap:6px;width:100%;background:none;border:none;cursor:pointer;padding:8px 16px;font-family:var(--fm);color:var(--t2)}
+    .td-hdr-icon{font-size:10px;color:var(--t4);flex-shrink:0}
+    .td-hdr-label{flex:1;font-size:12px;font-weight:600;text-align:left}
+    .td-add{background:none;border:none;cursor:pointer;color:var(--t3);padding:2px 4px;border-radius:4px;line-height:1;display:flex;align-items:center}
+    .td-add:hover{color:var(--t);background:var(--hover)}
+    .td-list{padding:0 8px 8px}
+    .td-group-label{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;padding:6px 8px 2px;color:var(--t4)}
+    .td-item{display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:8px;cursor:pointer;position:relative}
+    .td-item:hover{background:var(--hover)}
+    .td-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0}
+    .td-info{flex:1;min-width:0}
+    .td-title{font-size:12px;font-weight:500;color:var(--t);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .td-title.done{text-decoration:line-through;color:var(--t4)}
+    .td-meta{font-size:10px;color:var(--t3);margin-top:1px;display:flex;align-items:center;gap:6px}
+    .td-dur{display:flex;align-items:center;gap:3px}
+    .td-sched{color:#C89520;font-weight:600}
+    .td-check{background:none;border:none;cursor:pointer;color:var(--t4);padding:3px;border-radius:4px;display:flex;align-items:center;flex-shrink:0;opacity:0}
+    .td-item:hover .td-check{opacity:1}
+    .td-check.done{color:var(--ok);opacity:1}
+    .td-suggest-btn{width:calc(100% - 16px);margin:4px 8px;padding:8px;border-radius:100px;border:1.5px dashed var(--brd);background:none;cursor:pointer;font-family:var(--f);font-size:12px;font-weight:600;color:var(--t3);display:flex;align-items:center;justify-content:center;gap:6px;transition:all .15s}
+    .td-suggest-btn:hover{border-color:#C89520;color:#C89520;background:rgba(200,149,32,0.05)}
+    .td-empty{font-size:11px;color:var(--t4);padding:8px 8px;font-family:var(--fm)}
+
+    /* Suggestion cards */
+    .sug-card{padding:12px 14px;border-radius:var(--r);border:1px solid var(--bl);background:var(--w);margin-bottom:8px}
+    .sug-card-top{display:flex;align-items:flex-start;gap:10px;margin-bottom:10px}
+    .sug-card-icon{width:32px;height:32px;border-radius:8px;background:rgba(200,149,32,0.12);display:flex;align-items:center;justify-content:center;font-size:15px;flex-shrink:0}
+    .sug-card-info{flex:1;min-width:0}
+    .sug-card-title{font-size:13px;font-weight:600;color:var(--t);letter-spacing:-.2px}
+    .sug-card-when{font-size:11px;color:#C89520;font-weight:600;margin-top:2px}
+    .sug-card-reason{font-size:11px;color:var(--t3);margin-top:3px;line-height:1.4}
+    .sug-card-acts{display:flex;gap:6px}
+    .sug-accept{flex:1;padding:8px;border-radius:100px;border:none;background:var(--t);color:var(--w);font-size:12px;font-weight:600;font-family:var(--f);cursor:pointer;transition:opacity .12s}
+    .sug-accept:hover{opacity:.85}
+    .sug-dismiss{padding:8px 14px;border-radius:100px;border:1px solid var(--brd);background:var(--w);color:var(--t2);font-size:12px;font-weight:500;font-family:var(--f);cursor:pointer;transition:all .12s}
+    .sug-dismiss:hover{background:var(--hover)}
+
     @keyframes fi{from{opacity:0}to{opacity:1}}
     @keyframes su{from{transform:translateY(100%)}to{transform:translateY(0)}}
     @keyframes ti{from{opacity:0;transform:translateX(-50%) translateY(-8px)}to{opacity:1;transform:translateX(-50%) translateY(0)}}
@@ -2100,6 +2139,37 @@ function UpgradeModal({ reason, onClose }) {
   );
 }
 
+const PRIO = {
+  high:   { label:"Alta",   color:"#DC2626" },
+  medium: { label:"Media",  color:"#D97706" },
+  low:    { label:"Baja",   color:"#059669" },
+  none:   { label:"Sin prioridad", color:"var(--t4)" },
+};
+const PRIO_ORDER = ["high","medium","low","none"];
+const DUR_OPTIONS = [15,30,45,60,90,120];
+
+function getFreeSlots(events, daysAhead=7) {
+  const slots = [];
+  const WORK_START = 8 * 60, WORK_END = 20 * 60;
+  for (let i = 0; i < daysAhead; i++) {
+    const date = new Date(); date.setDate(date.getDate() + i); date.setHours(0,0,0,0);
+    const dateStr = `${date.getFullYear()}-${pad(date.getMonth()+1)}-${pad(date.getDate())}`;
+    const dayEvts = events
+      .filter(e => !e.isTask && !e.allDay && same(e.date, date))
+      .sort((a,b) => (a.sh*60+a.sm) - (b.sh*60+b.sm));
+    let cursor = WORK_START;
+    for (const e of dayEvts) {
+      const s = e.sh*60+e.sm, en = e.eh*60+e.em;
+      if (s > cursor && s - cursor >= 15)
+        slots.push({ date:dateStr, sh:Math.floor(cursor/60), sm:cursor%60, eh:Math.floor(s/60), em:s%60, duration_minutes:s-cursor });
+      cursor = Math.max(cursor, en);
+    }
+    if (WORK_END > cursor && WORK_END - cursor >= 15)
+      slots.push({ date:dateStr, sh:Math.floor(cursor/60), sm:cursor%60, eh:Math.floor(WORK_END/60), em:WORK_END%60, duration_minutes:WORK_END-cursor });
+  }
+  return slots;
+}
+
 function MaestroApp({ user, onLogout }){
   // Restaurar cuentas secundarias desde localStorage (la primaria la recrea syncCalendars)
   const [accounts,setAccounts]=useState(()=>{
@@ -2124,6 +2194,13 @@ function MaestroApp({ user, onLogout }){
   const [bookingLinksOpen,setBookingLinksOpen]=useState(true);
   const [editLink,setEditLink]=useState(null);
   const [userPlan,setUserPlan]=useState("free");
+  const [todos,setTodos]=useState([]);
+  const [todosOpen,setTodosOpen]=useState(true);
+  const [todoSheet,setTodoSheet]=useState(null); // null | "new" | {todo object}
+  const [todoForm,setTodoForm]=useState({});
+  const [suggestions,setSuggestions]=useState([]);
+  const [suggestSheet,setSuggestSheet]=useState(false);
+  const [suggestLoading,setSuggestLoading]=useState(false);
   const [upgradeModal,setUpgradeModal]=useState(null);
   const tlRef=useRef(null);
   const tlPanelRef=useRef(null);
@@ -2213,6 +2290,67 @@ function MaestroApp({ user, onLogout }){
     supabase.from("profiles").select("plan").eq("id",user.id).single()
       .then(({data})=>{ if(data?.plan) setUserPlan(data.plan); });
   },[user.id]);
+
+  const loadTodos=useCallback(async()=>{
+    const{data}=await supabase.from("todos").select("*").order("created_at",{ascending:false});
+    setTodos(data||[]);
+  },[]);
+  useEffect(()=>{loadTodos();},[loadTodos]);
+
+  const saveTodo=async(tf)=>{
+    const row={user_id:user.id,title:tf.title.trim(),description:tf.description||null,priority:tf.priority||"none",estimated_minutes:tf.estimated_minutes||null,scheduled_date:tf.scheduled_date||null,scheduled_sh:tf.scheduled_sh??null,scheduled_sm:tf.scheduled_sm??null,done:tf.done||false};
+    if(tf.id){
+      await supabase.from("todos").update(row).eq("id",tf.id);
+    } else {
+      await supabase.from("todos").insert(row);
+    }
+    await loadTodos();
+    setTodoSheet(null);
+  };
+
+  const toggleTodoDone=async(td)=>{
+    await supabase.from("todos").update({done:!td.done}).eq("id",td.id);
+    setTodos(ts=>ts.map(t=>t.id===td.id?{...t,done:!td.done}:t));
+  };
+
+  const deleteTodo=async(id)=>{
+    await supabase.from("todos").delete().eq("id",id);
+    setTodos(ts=>ts.filter(t=>t.id!==id));
+  };
+
+  const suggestTodos=async()=>{
+    const pending=todos.filter(t=>!t.done&&!t.scheduled_date);
+    if(!pending.length){flash("No hay pendientes sin agendar");return;}
+    setSuggestLoading(true);
+    setSuggestSheet(true);
+    setSuggestions([]);
+    const freeSlots=getFreeSlots(events);
+    const today_str=`${YR}-${pad(MO+1)}-${pad(DA)}`;
+    const tz=Intl.DateTimeFormat().resolvedOptions().timeZone;
+    try{
+      const res=await fetch(`${SUPABASE_URL}/functions/v1/suggest-todos`,{
+        method:"POST",
+        headers:{"Content-Type":"application/json","Authorization":`Bearer ${SUPABASE_ANON_KEY}`},
+        body:JSON.stringify({todos:pending,free_slots:freeSlots,today:today_str,timezone:tz}),
+      });
+      const data=await res.json();
+      setSuggestions(data.suggestions||[]);
+    }catch(e){
+      flash("Error al obtener sugerencias");
+      setSuggestSheet(false);
+    }finally{
+      setSuggestLoading(false);
+    }
+  };
+
+  const acceptSuggestion=async(sug)=>{
+    const td=todos.find(t=>t.id===sug.todo_id);
+    if(!td) return;
+    await supabase.from("todos").update({scheduled_date:sug.date,scheduled_sh:sug.sh,scheduled_sm:sug.sm}).eq("id",sug.todo_id);
+    setTodos(ts=>ts.map(t=>t.id===sug.todo_id?{...t,scheduled_date:sug.date,scheduled_sh:sug.sh,scheduled_sm:sug.sm}:t));
+    setSuggestions(ss=>ss.filter(s=>s.todo_id!==sug.todo_id));
+    flash(`"${td.title}" agendado`);
+  };
 
   // Returns the access token for the account that owns a given calendar
   const getTokenForCal=useCallback((calId)=>{
@@ -3060,6 +3198,46 @@ function MaestroApp({ user, onLogout }){
             )}
           </div>
 
+          {/* ── Pendientes ── */}
+          <div className="td-section">
+            <button className="td-hdr" onClick={()=>setTodosOpen(o=>!o)}>
+              <span className="td-hdr-icon">{todosOpen?"▾":"▸"}</span>
+              <span className="td-hdr-label">Pendientes</span>
+              <span style={{fontSize:10,color:"var(--t4)",marginRight:4}}>{todos.filter(t=>!t.done).length||""}</span>
+              <span className="td-add" onClick={e=>{e.stopPropagation();setTodoForm({priority:"none",estimated_minutes:30});setTodoSheet("new");}}>{I.plus}</span>
+            </button>
+            {todosOpen&&(
+              <div className="td-list">
+                {todos.filter(t=>!t.done).length===0&&<div className="td-empty">Sin pendientes</div>}
+                {PRIO_ORDER.map(p=>{
+                  const group=todos.filter(t=>!t.done&&t.priority===p);
+                  if(!group.length) return null;
+                  return(
+                    <div key={p}>
+                      <div className="td-group-label" style={{color:PRIO[p].color}}>{PRIO[p].label}</div>
+                      {group.map(td=>(
+                        <div key={td.id} className="td-item" onClick={()=>{setTodoForm({...td});setTodoSheet(td);}}>
+                          <div className="td-dot" style={{background:PRIO[td.priority]?.color||"var(--t4)"}}/>
+                          <div className="td-info">
+                            <div className="td-title">{td.title}</div>
+                            <div className="td-meta">
+                              {td.estimated_minutes&&<span className="td-dur">{I.clock} {td.estimated_minutes}min</span>}
+                              {td.scheduled_date&&<span className="td-sched">{new Date(td.scheduled_date+"T12:00").toLocaleDateString("es-AR",{weekday:"short",day:"numeric",month:"short"})} {td.scheduled_sh!=null?fmt(td.scheduled_sh,td.scheduled_sm??0):""}</span>}
+                            </div>
+                          </div>
+                          <button className={`td-check${td.done?" done":""}`} onClick={e=>{e.stopPropagation();toggleTodoDone(td);}}>{I.check}</button>
+                        </div>
+                      ))}
+                    </div>
+                  );
+                })}
+                {todos.filter(t=>!t.done).length>0&&(
+                  <button className="td-suggest-btn" onClick={suggestTodos}>✨ Sugerir agenda</button>
+                )}
+              </div>
+            )}
+          </div>
+
           {/* ── Today Card ── */}
           {!tlOpen && (
             <div className="today-card" {...swipeHandlers}>
@@ -3448,6 +3626,121 @@ function MaestroApp({ user, onLogout }){
         )}
 
         {upgradeModal&&<UpgradeModal reason={upgradeModal} onClose={()=>setUpgradeModal(null)}/>}
+
+        {/* ── Todo edit sheet ── */}
+        {todoSheet&&(
+          <>
+            <div className="ov" onClick={()=>setTodoSheet(null)}/>
+            <div className="sh">
+              <div className="sh-grab"/>
+              <div className="sh-head">
+                <span className="sh-h">{todoSheet==="new"?"Nuevo pendiente":"Editar pendiente"}</span>
+                <div style={{display:"flex",gap:6}}>
+                  {todoSheet!=="new"&&<button className="ib" style={{color:"var(--danger)"}} onClick={()=>{deleteTodo(todoForm.id);setTodoSheet(null);}}>{I.trash}</button>}
+                  <button className="ib" onClick={()=>setTodoSheet(null)}>{I.x}</button>
+                </div>
+              </div>
+              <div className="sh-body">
+                <div className="fg">
+                  <label className="fl">Título</label>
+                  <input className="fi" placeholder="¿Qué tenés que hacer?" value={todoForm.title||""} onChange={e=>setTodoForm(f=>({...f,title:e.target.value}))} autoFocus/>
+                </div>
+                <div className="fg">
+                  <label className="fl">Descripción</label>
+                  <input className="fi" placeholder="Opcional" value={todoForm.description||""} onChange={e=>setTodoForm(f=>({...f,description:e.target.value}))}/>
+                </div>
+                <div className="fg">
+                  <label className="fl">Prioridad</label>
+                  <div style={{display:"flex",gap:6}}>
+                    {PRIO_ORDER.map(p=>(
+                      <button key={p} type="button" className="cp"
+                        style={todoForm.priority===p?{background:PRIO[p].color,borderColor:PRIO[p].color,color:"#fff"}:{borderColor:PRIO[p].color,color:PRIO[p].color}}
+                        onClick={()=>setTodoForm(f=>({...f,priority:p}))}>
+                        {PRIO[p].label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <div className="fg">
+                  <label className="fl">{I.clock} Duración estimada</label>
+                  <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
+                    {DUR_OPTIONS.map(d=>(
+                      <button key={d} type="button" className="cp"
+                        style={todoForm.estimated_minutes===d?{background:"var(--t)",borderColor:"var(--t)",color:"var(--w)"}:{}}
+                        onClick={()=>setTodoForm(f=>({...f,estimated_minutes:d}))}>
+                        {d<60?`${d}min`:d===60?"1h":`${d/60}h`}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <div className="form-div"/>
+                <div className="fg">
+                  <label className="fl">{I.cal} Fecha (opcional)</label>
+                  <DatePicker value={todoForm.scheduled_date||""} onChange={v=>setTodoForm(f=>({...f,scheduled_date:v||null}))} style={{marginBottom:todoForm.scheduled_date?10:0}}/>
+                </div>
+                {todoForm.scheduled_date&&(
+                  <div className="fg">
+                    <label className="fl">{I.clock} Hora (opcional)</label>
+                    <TimePicker hour={todoForm.scheduled_sh??9} minute={todoForm.scheduled_sm??0} onChange={(h,m)=>setTodoForm(f=>({...f,scheduled_sh:h,scheduled_sm:m}))}/>
+                  </div>
+                )}
+                <button className="btn-m" style={{marginTop:8}} disabled={!todoForm.title?.trim()} onClick={()=>saveTodo(todoForm)}>Guardar</button>
+                <button className="btn-g" onClick={()=>setTodoSheet(null)}>Cancelar</button>
+              </div>
+            </div>
+          </>
+        )}
+
+        {/* ── Suggestions sheet ── */}
+        {suggestSheet&&(
+          <>
+            <div className="ov-upgrade" onClick={()=>setSuggestSheet(false)}/>
+            <div className="sh">
+              <div className="sh-grab"/>
+              <div className="sh-head">
+                <span className="sh-h">✨ Sugerencias de agenda</span>
+                <button className="ib" onClick={()=>setSuggestSheet(false)}>{I.x}</button>
+              </div>
+              <div className="sh-body">
+                {suggestLoading&&(
+                  <div style={{textAlign:"center",padding:"40px 0",color:"var(--t3)"}}>
+                    <div style={{fontSize:28,marginBottom:12}}>🤔</div>
+                    <div style={{fontSize:14,fontWeight:600,color:"var(--t2)",marginBottom:6}}>Analizando tu agenda...</div>
+                    <div style={{fontSize:12,color:"var(--t3)"}}>Buscando los mejores momentos para tus pendientes</div>
+                  </div>
+                )}
+                {!suggestLoading&&suggestions.length===0&&(
+                  <div style={{textAlign:"center",padding:"40px 0",color:"var(--t3)"}}>
+                    <div style={{fontSize:28,marginBottom:12}}>📭</div>
+                    <div style={{fontSize:13}}>No se encontraron sugerencias.<br/>Revisá que tenés slots libres en los próximos días.</div>
+                  </div>
+                )}
+                {!suggestLoading&&suggestions.map(sug=>{
+                  const td=todos.find(t=>t.id===sug.todo_id);
+                  if(!td) return null;
+                  const d=new Date(sug.date+"T12:00");
+                  const dateLabel=d.toLocaleDateString("es-AR",{weekday:"long",day:"numeric",month:"long"});
+                  return(
+                    <div key={sug.todo_id} className="sug-card">
+                      <div className="sug-card-top">
+                        <div className="sug-card-icon">✨</div>
+                        <div className="sug-card-info">
+                          <div className="sug-card-title">{td.title}</div>
+                          <div className="sug-card-when">{dateLabel} · {fmt(sug.sh,sug.sm)}{td.estimated_minutes?` (${td.estimated_minutes}min)`:""}</div>
+                          {sug.reason&&<div className="sug-card-reason">{sug.reason}</div>}
+                        </div>
+                      </div>
+                      <div className="sug-card-acts">
+                        <button className="sug-accept" onClick={()=>acceptSuggestion(sug)}>Agendar</button>
+                        <button className="sug-dismiss" onClick={()=>setSuggestions(ss=>ss.filter(s=>s.todo_id!==sug.todo_id))}>Descartar</button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </>
+        )}
       </div>
     </>
   );
