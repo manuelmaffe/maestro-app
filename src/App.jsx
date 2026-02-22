@@ -2340,7 +2340,10 @@ function MaestroApp({ user, onLogout }){
       });
       if(!res.ok) throw new Error(await res.text());
       const data=await res.json();
-      setSuggestions(data?.suggestions||[]);
+      const mapped=(data?.suggestions||[])
+        .map(sug=>({...sug,todo_id:pending[sug.todo_index]?.id}))
+        .filter(sug=>sug.todo_id);
+      setSuggestions(mapped);
     }catch(e){
       flash("Error al obtener sugerencias");
       setSuggestSheet(false);
