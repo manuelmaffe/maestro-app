@@ -1643,6 +1643,10 @@ function AuthScreen() {
         options: {
           scopes: "https://www.googleapis.com/auth/calendar email profile",
           redirectTo: window.location.origin,
+          queryParams: {
+            access_type: "offline",
+            prompt: "consent",
+          },
         },
       });
     } catch {
