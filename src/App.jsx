@@ -726,10 +726,11 @@ const CSS = () => (
     .bk-sidebar-info{flex:1;min-width:0}
     .bk-sidebar-name{font-size:12px;font-weight:600;color:var(--t);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-family:var(--fm)}
     .bk-sidebar-meta{font-size:10px;color:var(--t3);font-family:var(--fm)}
-    .bk-sidebar-copy,.bk-sidebar-del{background:none;border:none;cursor:pointer;color:var(--t4);padding:4px;border-radius:4px;display:flex;align-items:center;opacity:0}
-    .bk-sidebar-item:hover .bk-sidebar-copy,.bk-sidebar-item:hover .bk-sidebar-del{opacity:1}
+    .bk-sidebar-item{cursor:pointer}
+    .bk-sidebar-copy,.bk-sidebar-del,.bk-sidebar-edit{background:none;border:none;cursor:pointer;color:var(--t4);padding:4px;border-radius:4px;display:flex;align-items:center;opacity:0;flex-shrink:0}
+    .bk-sidebar-item:hover .bk-sidebar-copy,.bk-sidebar-item:hover .bk-sidebar-del,.bk-sidebar-item:hover .bk-sidebar-edit{opacity:1}
     .bk-sidebar-del:hover{color:var(--danger)}
-    .bk-sidebar-copy:hover{color:var(--t)}
+    .bk-sidebar-copy:hover,.bk-sidebar-edit:hover{color:var(--t)}
 
     /* ── Public booking page ── */
     .bk-page{min-height:100vh;background:#f8fafc;font-family:var(--fm)}
@@ -954,7 +955,7 @@ function BookingPage({ linkId }) {
   const [form, setForm] = useState({ name: "", email: "" });
   const [loading, setLoading] = useState(true);
   const [booking, setBooking] = useState(false);
-  const [result, setResult] = useState(null);
+
   const [pageError, setPageError] = useState("");
   const [formErr, setFormErr] = useState("");
   const [vM, setVM] = useState(new Date().getMonth());
@@ -1086,7 +1087,6 @@ function BookingPage({ linkId }) {
         setFormErr("Error: " + errMsg);
         setBooking(false); return;
       }
-      setResult(body);
       setStep("done");
       setTakenSlots(ts => [...ts, { slot_date: selDate.toISOString().split("T")[0], slot_sh: selSlot.sh, slot_sm: selSlot.sm }]);
     } catch(e) {
@@ -1140,12 +1140,6 @@ function BookingPage({ linkId }) {
               <strong>{fmtTime(endH,endM)}</strong>.
               <br/>Un evento fue creado en el calendario del organizador y te enviaron una invitación a <strong>{form.email}</strong>.
             </div>
-            {result?.meetLink && (
-              <a href={result.meetLink} target="_blank" rel="noopener noreferrer"
-                style={{display:"inline-flex",alignItems:"center",gap:8,padding:"10px 20px",background:"#1a73e8",color:"#fff",borderRadius:8,textDecoration:"none",fontWeight:600,fontSize:14}}>
-                📹 Unirse a Google Meet
-              </a>
-            )}
           </div>
         </div>
       ) : (
@@ -1253,19 +1247,19 @@ function BookingPage({ linkId }) {
 }
 
 // ── Booking Link Builder ──
-function BookingBuilder({ events, accounts, enabledCals, user, onFlash, onClose, onLinkCreated }) {
+function BookingBuilder({ events, accounts, enabledCals, user, onFlash, onClose, onLinkCreated, editLink }) {
   const [bk, setBk] = useState({
-    title: "Reunión con " + (user?.name || ""),
-    duration: 30,
-    dateFrom: (() => { const d=new Date(); d.setDate(d.getDate()+1); return d.toISOString().split("T")[0]; })(),
-    dateTo: (() => { const d=new Date(); d.setDate(d.getDate()+14); return d.toISOString().split("T")[0]; })(),
-    hourStart: 9,
-    hourEnd: 18,
-    weekdays: [1,2,3,4,5],
-    buffer: 15,
-    maxPerDay: 4,
-    addVideo: true,
-    targetCal: accounts.filter(a=>a.on).flatMap(a=>a.cals.filter(c=>c.on))[0]?.id || "",
+    title: editLink?.title || "Reunión con " + (user?.name || ""),
+    duration: editLink?.duration || 30,
+    dateFrom: editLink?.date_from || (() => { const d=new Date(); d.setDate(d.getDate()+1); return d.toISOString().split("T")[0]; })(),
+    dateTo: editLink?.date_to || (() => { const d=new Date(); d.setDate(d.getDate()+14); return d.toISOString().split("T")[0]; })(),
+    hourStart: editLink?.hour_start ?? 9,
+    hourEnd: editLink?.hour_end ?? 18,
+    weekdays: editLink?.weekdays || [1,2,3,4,5],
+    buffer: editLink?.buffer ?? 15,
+    maxPerDay: editLink?.max_per_day ?? 4,
+    addVideo: editLink?.add_video ?? true,
+    targetCal: editLink?.target_cal || accounts.filter(a=>a.on).flatMap(a=>a.cals.filter(c=>c.on))[0]?.id || "",
   });
   const [generated, setGenerated] = useState(null);
 
@@ -1355,10 +1349,7 @@ function BookingBuilder({ events, accounts, enabledCals, user, onFlash, onClose,
         sh: e.sh, sm: e.sm, eh: e.eh, em: e.em,
       }));
 
-    const { error } = await supabase.from("booking_links").insert({
-      id,
-      user_id: session.user.id,
-      user_slug: slug,
+    const linkPayload = {
       title: bk.title,
       duration: bk.duration,
       date_from: bk.dateFrom,
@@ -1372,12 +1363,23 @@ function BookingBuilder({ events, accounts, enabledCals, user, onFlash, onClose,
       target_cal: bk.targetCal,
       busy_blocks: busyBlocks,
       refresh_token: refreshToken,
-    });
-    if (error) { onFlash("Error al guardar link: " + error.message); return; }
+    };
 
-    const link = `${window.location.origin}/book/${id}`;
+    let finalId;
+    if (editLink) {
+      const { error } = await supabase.from("booking_links").update(linkPayload).eq("id", editLink.id);
+      if (error) { onFlash("Error al actualizar link: " + error.message); return; }
+      finalId = editLink.id;
+      onFlash("Link actualizado");
+    } else {
+      const { error } = await supabase.from("booking_links").insert({ id, user_id: session.user.id, user_slug: slug, ...linkPayload });
+      if (error) { onFlash("Error al guardar link: " + error.message); return; }
+      finalId = id;
+      onFlash("Link creado");
+    }
+
+    const link = `${window.location.origin}/book/${finalId}`;
     setGenerated(link);
-    onFlash("Link creado");
     onLinkCreated?.();
   };
 
@@ -1572,7 +1574,7 @@ function BookingBuilder({ events, accounts, enabledCals, user, onFlash, onClose,
       {!generated ? (
         <button className="btn-m" onClick={generateLink} disabled={availSlots.length===0}
           style={{marginTop:4,opacity:availSlots.length===0?.4:1}}>
-          Generar link de agendamiento
+          {editLink ? "Actualizar link" : "Generar link de agendamiento"}
         </button>
       ) : (
         <div className="bk-link-result">
@@ -1889,6 +1891,7 @@ function MaestroApp({ user, onLogout }){
   const [tlView,setTlView]=useState(()=>localStorage.getItem("maestro_tlview")||"3day");
   const [bookingLinks,setBookingLinks]=useState([]);
   const [bookingLinksOpen,setBookingLinksOpen]=useState(false);
+  const [editLink,setEditLink]=useState(null);
   const tlRef=useRef(null);
   const tlPanelRef=useRef(null);
 
@@ -1967,7 +1970,7 @@ function MaestroApp({ user, onLogout }){
 
   const loadBookingLinks=useCallback(async()=>{
     const{data}=await supabase.from("booking_links")
-      .select("id,title,duration,date_from,date_to,created_at")
+      .select("id,title,duration,date_from,date_to,hour_start,hour_end,weekdays,buffer,max_per_day,add_video,target_cal,created_at")
       .order("created_at",{ascending:false});
     setBookingLinks(data||[]);
   },[]);
@@ -2784,18 +2787,22 @@ function MaestroApp({ user, onLogout }){
                 {bookingLinks.map(bl=>{
                   const url=`${window.location.origin}/book/${bl.id}`;
                   return(
-                    <div key={bl.id} className="bk-sidebar-item">
+                    <div key={bl.id} className="bk-sidebar-item" onClick={()=>window.open(url,"_blank")}>
                       <div className="bk-sidebar-dot"/>
                       <div className="bk-sidebar-info">
                         <div className="bk-sidebar-name">{bl.title}</div>
                         <div className="bk-sidebar-meta">{bl.duration}min · {new Date(bl.date_from+"T00:00").toLocaleDateString("es-AR",{day:"numeric",month:"short"})} – {new Date(bl.date_to+"T00:00").toLocaleDateString("es-AR",{day:"numeric",month:"short"})}</div>
                       </div>
+                      <button className="bk-sidebar-edit" title="Editar"
+                        onClick={e=>{e.stopPropagation();setEditLink(bl);setSheet("new");setForm(f=>({...f,isBooking:true}))}}>
+                        {I.edit}
+                      </button>
                       <button className="bk-sidebar-copy" title="Copiar link"
-                        onClick={()=>navigator.clipboard?.writeText(url).then(()=>flash("Link copiado"))}>
+                        onClick={e=>{e.stopPropagation();navigator.clipboard?.writeText(url).then(()=>flash("Link copiado"))}}>
                         {I.copy}
                       </button>
                       <button className="bk-sidebar-del" title="Eliminar"
-                        onClick={async()=>{await supabase.from("booking_links").delete().eq("id",bl.id);loadBookingLinks();flash("Link eliminado");}}>
+                        onClick={async e=>{e.stopPropagation();await supabase.from("booking_links").delete().eq("id",bl.id);loadBookingLinks();flash("Link eliminado");}}>
                         {I.trash}
                       </button>
                     </div>
@@ -2973,7 +2980,7 @@ function MaestroApp({ user, onLogout }){
           <div className="sh">
             <div className="sh-grab"/>
             <div className="sh-head">
-              <span className="sh-h">{sheet==="new" ? (form.isBooking ? "Link de agendamiento" : form.isTask ? "Nueva tarea" : "Nuevo evento") : (form.isTask ? "Editar tarea" : "Editar evento")}</span>
+              <span className="sh-h">{sheet==="new" ? (form.isBooking ? (editLink ? "Editar link" : "Link de agendamiento") : form.isTask ? "Nueva tarea" : "Nuevo evento") : (form.isTask ? "Editar tarea" : "Editar evento")}</span>
               <button className="ib" onClick={()=>setSheet(null)}>{I.x}</button>
             </div>
             <div className="sh-body">
@@ -3001,13 +3008,15 @@ function MaestroApp({ user, onLogout }){
               {/* ── Booking link builder ── */}
               {form.isBooking ? (
                 <BookingBuilder
+                  key={editLink?.id||"new"}
                   events={events}
                   accounts={accounts}
                   enabledCals={enabledCals}
                   user={user}
                   onFlash={flash}
-                  onClose={()=>setSheet(null)}
+                  onClose={()=>{setSheet(null);setEditLink(null);}}
                   onLinkCreated={loadBookingLinks}
+                  editLink={editLink}
                 />
               ) : (
               <>
