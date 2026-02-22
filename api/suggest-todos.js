@@ -2,6 +2,7 @@ const SUPABASE_URL = "https://wvylxgthmadqprnbjlrc.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind2eWx4Z3RobWFkcXBybmJqbHJjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE3MDk1MTksImV4cCI6MjA4NzI4NTUxOX0.ChwJG_8j2DDcOgtYV0KftGMXyfOMQhNuUcYwalsR46E";
 
 export default async function handler(req, res) {
+  console.log("suggest-todos called, ANTHROPIC_API_KEY set:", !!process.env.ANTHROPIC_API_KEY);
   if (req.method !== "POST") {
     return res.status(405).json({ error: "Method not allowed" });
   }
@@ -85,6 +86,7 @@ Reglas:
 
   if (!anthropicRes.ok) {
     const err = await anthropicRes.text();
+    console.error("Anthropic error:", err);
     return res.status(500).json({ ok: false, error: `Anthropic error: ${err}` });
   }
 
